@@ -288,6 +288,20 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Level skip keys (a testing option in the speaker menu): = goes to the next voyage
+    // level and - to the one before, without clearing this one (nothing is recorded).
+    document.addEventListener("keydown", event => {
+        const t = event.target;
+        if (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || event.ctrlKey || event.metaKey || event.altKey) return;
+        let on = false;
+        try { on = localStorage.getItem("blocked-skipkeys") === "on"; } catch (e) { /* storage blocked */ }
+        const url = event.key === "=" || event.key === "+" ? data.skipUrls.next : event.key === "-" || event.key === "_" ? data.skipUrls.prev : null;
+        if (!on || !url || leaving) return;
+        event.preventDefault();
+        leaving = true;
+        BlockedSound.go(url);
+    });
+
     // On the win screen or the room tally: Space or Enter goes on to the next
     // room. R already restarts the board; this also closes the win screen and
     // stays in this room instead of walking on.

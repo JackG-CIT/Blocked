@@ -359,6 +359,7 @@ def play(level_id):
 
     next_url, place, music = None, None, 'voyage'
     room, flow, auto_advance, chapter_url, mid_chapter = 0, False, False, None, False
+    skip_urls = {'next': None, 'prev': None}
     story_extra = {}   # the story bits for voyage rooms (story.py, drawn by static/js/story.js)
     if level['in_campaign'] and level['published']:
         voyage = campaign()
@@ -380,6 +381,9 @@ def play(level_id):
         flow = request.args.get('flow') == '1' or level_id not in progress
         if i + 1 < len(ids):
             next_url = url_for('play', level_id=ids[i + 1], **({'flow': 1} if flow else {}))
+        # The level skip keys (a testing option in the speaker menu) go to the voyage's next and previous levels.
+        skip_urls = {'next': url_for('play', level_id=ids[i + 1]) if i + 1 < len(ids) else None,
+                     'prev': url_for('play', level_id=ids[i - 1]) if i else None}
         auto_advance = flow and mid_chapter and next_url is not None
         story_extra = voyage_story(voyage, i)
 
@@ -390,6 +394,7 @@ def play(level_id):
         'leaderboard': leaderboard(level_id),
         'completeUrl': url_for('complete_level', level_id=level_id),
         'nextUrl': next_url,
+        'skipUrls': skip_urls,
         'homeUrl': url_for('index'),
         'chapterUrl': chapter_url,
         'room': room,
