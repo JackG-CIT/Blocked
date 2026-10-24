@@ -9,6 +9,7 @@ style.css) plus a little glue in static/standalone/. The voyage comes from
 seed_levels.py, with a stored solution for every level so hints work even on
 levels too big to solve in the browser.
 """
+import hashlib
 import json
 import os
 import re
@@ -132,6 +133,18 @@ def export(app, limits):
         f.write('window.BLOCKED_DATA = ' + json.dumps(data, separators=(',', ':')) + ';\n')
     with app.test_request_context():
         html = render_template('standalone.html', limits=limits)
+    # Stamp every script and stylesheet link with a hash of the file, so a browser that
+    # cached an older build (GitHub Pages lets it) always fetches the new files.
+    def stamp(rel):
+        with open(os.path.join(OUT, rel), 'rb') as f:
+            return rel + '?v=' + hashlib.sha1(f.read()).hexdigest()[:10]
+    worker = 'js/solver.js'
+    sa_path = os.path.join(OUT, 'js', 'standalone.js')
+    with open(sa_path, encoding='utf-8') as f:
+        sa = f.read()
+    with open(sa_path, 'w', encoding='utf-8') as f:
+        f.write(sa.replace(f'"{worker}"', f'"{stamp(worker)}"'))   # the hint solver's worker
+    html = re.sub(r'(src|href)="((?:js|css)/[\w.-]+\.(?:js|css))"', lambda m: f'{m.group(1)}="{stamp(m.group(2))}"', html)
     with open(os.path.join(OUT, 'index.html'), 'w', encoding='utf-8') as f:
         f.write(html)
 
