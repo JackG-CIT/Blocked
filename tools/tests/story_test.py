@@ -248,7 +248,9 @@ with sync_playwright() as p:
     pg.click('#screen-title [data-story-scene=intro]'); time.sleep(0.6)
     check(pg.locator('.cutscene').count() == 1, 'Watch the intro replays it')
     pg.mouse.click(400, 300); time.sleep(0.6)
-    check(pg.locator('.cutscene').count() == 0, 'a click or tap skips it')
+    check(pg.locator('.cutscene').count() == 1, "a click doesn't skip it (only keys do)")
+    pg.keyboard.press('Escape'); time.sleep(0.6)
+    check(pg.locator('.cutscene').count() == 0, 'a key press skips it')
     # --- the story around the rooms ---
     pg.evaluate("""() => { const p = {}; BLOCKED_DATA.levels.forEach(l => p[l.id] = {count: 1, best_ms: 1000, best_moves: 999});
                      localStorage.setItem('blocked-sa-progress', JSON.stringify(p));
