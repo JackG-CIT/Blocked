@@ -202,3 +202,40 @@ QUEEN3 = {
     'links': {(2, 5): (4, 7), (11, 5): (13, 7), (24, 5): (22, 7), (2, 9): (6, 7), (8, 5): (16, 9), (20, 9): (19, 7)},
     'health': {'hull': 5},
 }
+
+
+def kraken2_map():
+    """The user's Level 11 (Powder Room), exactly as it was, then three side puzzles that
+    feed a new cannon on the ship's rail, which fires across the water at the kraken
+    sitting on the landing to the treasure island. A gangplank crosses the water."""
+    import levels_user as U
+    l11 = U.L11[0]
+    b = Board(39, 13)
+    for y, row in enumerate(l11):
+        for x, ch in enumerate(row):
+            b.g[y][x] = ch
+    b.put('.', (11, 5), (12, 5))                    # Level 11's treasure square is now the way out
+    # the powder room (hub): the new cannon and its fuse
+    b.floor(13, 4, 19, 8).put('>', (12, 6)).put('F', (19, 4)).put('#', (17, 4))
+    b.put('B', (15, 5), (14, 7))
+    # north store: its door (14,3) is a gate, opened by a plate at the far end; a ladder at (19,3)
+    b.floor(13, 1, 23, 2).put('.', (14, 3), (19, 3)).put('_', (23, 1)).put('#', (20, 2))
+    b.put('B', (21, 1), (16, 2), (18, 2))
+    # south store: its door (16,9) is a gate, opened by a plate inside; a ladder at (19,9)
+    b.floor(13, 10, 23, 11).put('.', (16, 9), (19, 9)).put('_', (22, 11)).put('#', (14, 11))
+    b.put('B', (15, 10), (18, 11), (21, 10))
+    # the ship's rail, the open sea, the gangplank (row 4) and the gun's lane (row 6)
+    b.floor(21, 3, 29, 9, '~').floor(20, 4, 29, 4).floor(20, 6, 23, 6)
+    # the kraken on the landing, and the treasure island behind it
+    b.floor(30, 4, 32, 8, 'K').floor(33, 3, 37, 9).put('E', (36, 6))
+    return b.rows()
+
+
+KRAKEN2 = {
+    'name': 'The Kraken',
+    'map': kraken2_map(),
+    'links': {(3, 8): (1, 2), (8, 3): (6, 1), (1, 1): (6, 5), (7, 1): (7, 5), (8, 1): (8, 5), (9, 1): (9, 5),
+              (9, 3): (1, 5), (1, 8): (1, 9), (3, 10): (2, 10),           # Level 11's wiring, unchanged
+              (19, 4): (12, 6), (23, 1): (14, 3), (22, 11): (16, 9)},     # the new cannon and gates
+    'health': {'kraken': 5},
+}

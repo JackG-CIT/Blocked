@@ -35,7 +35,7 @@ The voyage is 49 levels in eight chapters, and chapters can be any length:
 | 4 | The Squeeze | Squeeze Play, Shove Off, Lock Gate, Dry Dock, Pinch Point |
 | 5 | Gunpowder | Load and Light, Clear the Way, Powder Keg, Broadside, Open Fire, Run the Gauntlet, Powder Monkey, Crossfire |
 | 6 | Davy Jones' Locker | Davy Jones' Locker, Hair Trigger, The Long Shot, The Last Broadside |
-| 7 | Endgame | The Black Queen (sink Rook's flagship), The Kraken |
+| 7 | Endgame | The Black Queen (sink Rook's flagship), The Kraken (your Level 11, then side stores feeding a gun aimed across the water at the kraken) |
 | 8 | Expert Waters (bonus, after the ending) | Stomp, Fire in the Hole, the twelve hard levels, Powder Room, Brig Break |
 
 Each chapter brings in a new idea, and its last level is a harder chapter test that plays the boss music. The bottom of `seed_levels.py` has the chapter titles (`CHAPTERS`), how many levels each has (`CHAPTER_LENGTHS`), the chapters whose levels each stand alone with their own chest (`LOOSE_CHAPTERS`: the finale and Expert Waters), and the bonus chapters after the story's ending (`BONUS_CHAPTERS`). `chapters.py` turns those into chapters for the website, the standalone build and the line-up check. Don't edit `seed_levels.py` by hand: change the list in `tools/assemble.py` and run it (see `tools/README.md`).
@@ -161,8 +161,8 @@ Pages ask for a **slot**, and the `PLAYLIST` near the top of the music section i
 | `chapter1` ... `chapter6` | The levels of chapters 1-6 | `sea-legs`, `pressure`, `locks-keys`, `crossfire` (The Squeeze), `gunpowder`, `davy-jones` |
 | `boss1` ... `boss6` | The last level of chapters 1-6 | the matching `-boss` tracks |
 | `finale` | The Black Queen (the deck battle) | `boss-storm` (Eye of the Storm) |
-| `kraken` | The Kraken | `boss-kraken` (Kraken Rising) |
-| `expert` | Expert Waters | `boss-storm-v2` (Eye of the Storm II) |
+| `kraken` | The Kraken | `boss-storm-v2` (Eye of the Storm II) |
+| `expert` | Expert Waters | `boss-kraken` (Kraken Rising) |
 | `milestone` | A big milestone (not used yet) | `milestone` |
 
 Try any track in any slot with "Try a track in a slot" on **/sounds**. Older names still work: `boss` and `deep` mean `finale`, and `voyage` means `chapter1`.
