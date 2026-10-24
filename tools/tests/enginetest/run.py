@@ -20,8 +20,9 @@ JS = """async (c) => {
     const st = g.getState();
     const boxes = st.boxes.map(b => b.join(',')).sort().join(' ');
     const want = c.states[i][1].map(b => b.join(',')).sort().join(' ');
-    if (st.player.join(',') !== c.states[i][0].join(',') || boxes !== want) {
-      out.mismatch = {step: i, got: st.player.join(',') + ' | ' + boxes, want: c.states[i][0].join(',') + ' | ' + want};
+    const hp = JSON.stringify(st.health), wantHp = JSON.stringify(c.states[i][2]);
+    if (st.player.join(',') !== c.states[i][0].join(',') || boxes !== want || hp !== wantHp) {
+      out.mismatch = {step: i, got: st.player.join(',') + ' | ' + boxes + ' ' + hp, want: c.states[i][0].join(',') + ' | ' + want + ' ' + wantHp};
       break;
     }
   }

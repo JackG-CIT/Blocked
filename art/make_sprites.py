@@ -39,6 +39,8 @@ PALETTE = {
     "w": "#17508a", "v": "#1f64a8", "u": "#3f8ad4", "f": "#cfeaff",
     # green (checkmark)
     "E": "#5cc05a", "X": "#2f7a33",
+    # kraken
+    "P": "#8a3fa8", "Q": "#5a2275", "T": "#c87ee0", "t": "#f2c6f7",
 }
 
 
@@ -152,6 +154,70 @@ def make_plate(pressed):
     for i in range(4):  # little X in the middle
         g[6 + i][6 + i] = mark
         g[6 + i][9 - i] = mark
+    return g
+
+
+def make_kraken(eye=False):
+    """A kraken square: a purple tentacle curling up through dark water, or (eye=True)
+    the beast's great yellow eye. It blocks like a wall until its health runs out."""
+    import math
+    g = blank(16, 16, "w")
+    for y in range(16):          # ripples in the water
+        for x in range(16):
+            if (x * 3 + y * 5) % 11 == 0 and (y % 4) == 1:
+                g[y][x] = "v"
+    if eye:
+        rect(g, 0, 0, 15, 15, "P")
+        for x, y in [(1, 1), (13, 2), (2, 13), (12, 14), (14, 12)]:
+            g[y][x] = "T"
+        for y in range(16):
+            for x in range(16):
+                d = math.hypot((x - 7.5) / 6.8, (y - 7.5) / 4.6)   # an almond-shaped eye
+                if d < 1.0:
+                    g[y][x] = "K"
+                if d < 0.82:
+                    g[y][x] = "Y" if d > 0.45 else "F"
+                if abs(x - 7.5) < 1.1 and d < 0.75:
+                    g[y][x] = "K"        # slit pupil
+        g[5][5] = g[5][6] = "W"           # glint
+        for x in range(2, 14):            # heavy brow
+            g[2][x] = "Q"
+        return g
+    for y in range(16):
+        cx = 7.5 + 3.2 * math.sin((y + 3) / 16 * 2 * math.pi)
+        half = 3.8 - y * 0.1
+        for x in range(16):
+            dx = x - cx
+            if abs(dx) <= half + 1:
+                g[y][x] = "K"
+            if abs(dx) <= half:
+                g[y][x] = "P" if dx > -half + 1 else "T"
+            if dx > half - 1.6 and abs(dx) <= half:
+                g[y][x] = "Q"
+        sx = int(round(cx + 0.6))
+        if y % 3 == 1 and 0 <= sx < 16:
+            g[y][sx] = "t"        # suckers
+    return g
+
+
+def make_hull():
+    """An enemy ship's hull: tarred black planks with a red stripe and iron nails.
+    Cannon fire wears it down; with no health left the whole ship sinks."""
+    g = blank(16, 16, "n")
+    for y in range(16):
+        row = y % 4
+        for x in range(16):
+            if row == 3:
+                g[y][x] = "K"
+            elif row == 0:
+                g[y][x] = "D"
+            if (x + (y // 4) * 5) % 8 == 7 and row != 3:
+                g[y][x] = "K"
+    rect(g, 0, 6, 15, 7, "r")
+    for x in range(16):
+        g[6][x] = "R" if x % 2 else "r"
+    for x, y in [(2, 1), (10, 1), (6, 9), (14, 9), (2, 13), (10, 13)]:
+        g[y][x] = "i"
     return g
 
 
@@ -555,6 +621,9 @@ def main():
         "sea": make_sea(),
         "lock": LOCK,
         "check": CHECK,
+        "kraken": make_kraken(),
+        "kraken-eye": make_kraken(eye=True),
+        "hull": make_hull(),
     }
     big = {"logo": make_logo(), "ship": make_ship()}
     for name, g in {**tiles, **big}.items():

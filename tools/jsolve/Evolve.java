@@ -8,7 +8,15 @@ import java.util.concurrent.atomic.*;
  * time (simulated annealing), scored with rating.py's formula, kept only if an
  * exact breadth-first search (same rules as solver.py / fast.py) can solve them.
  *
- *   java -Xmx24g -cp jsolve Evolve <outDir> <threads> <minutes> [seed]
+ *   java -Xmx24g -cp jsolve Evolve <outDir> <threads> <minutes> [seed] [key=value ...]
+ *
+ * Target mode (for voyage levels of a set difficulty rather than the hardest):
+ *   style=plates|plates4|squeeze|cannons|mixed   every thread uses this style
+ *   target=13.5      aim for this rating.py score (Seven Seals is 11.8, Nine Locks 15.3)
+ *   maxmoves=110     keep the shortest solution at most this long
+ *   need=squeeze|shot|nosqueeze   the solution must squeeze / fire / not squeeze
+ *   from=map.txt     start every climb from this level (map lines, then "links x,y->x,y ...")
+ *   size=WxH         board size for random starts
  *
  * Each thread writes its best levels to outDir/best-<thread>.txt. Results are
  * candidates only: tools/hard.py re-checks them with the Python rules.
@@ -303,7 +311,36 @@ public class Evolve {
     static double log2(double v) { return Math.log(v) / Math.log(2); }
 
     static int BIG_STATES = 300_000;   // gently discourage state spaces bigger than this (Refine raises it)
-    static final class Eval { Game.Result r; double score, rating; String why = ""; int unneeded = -1; }
+    static final class Eval { Game.Result r; double score, rating; String why = ""; int unneeded = -1; boolean needOk = true; }
+    // Target mode (see the top of the file).
+    static double TARGET = -1; static int MAXMOVES = 9999; static String NEED = "", STYLE = null; static Lvl FROM = null;
+    static int SIZE_W = 0, SIZE_H = 0;
+
+    static Lvl readLevel(String path) throws IOException {
+        List<String> rows = new ArrayList<>(); String links = "";
+        for (String line : java.nio.file.Files.readAllLines(java.nio.file.Paths.get(path))) {
+            if (line.startsWith("links")) links = line.substring(5).trim();
+            else if (!line.isBlank() && !line.startsWith("#!")) rows.add(line);
+        }
+        Lvl lv = new Lvl();
+        lv.W = rows.get(0).length(); lv.H = rows.size(); lv.N = lv.W * lv.H; lv.WORDS = (lv.N + 63) / 64;
+        lv.g = new char[lv.N]; lv.boxStart = new boolean[lv.N]; lv.plateTo = new int[lv.N]; lv.fuseTo = new int[lv.N];
+        Arrays.fill(lv.plateTo, -1); Arrays.fill(lv.fuseTo, -1);
+        for (int y = 0; y < lv.H; y++) for (int x = 0; x < lv.W; x++) {
+            char c = rows.get(y).charAt(x); int i = y * lv.W + x;
+            if (c == 'B') { lv.boxStart[i] = true; c = '.'; }
+            if (c == '=') { lv.boxStart[i] = true; c = '_'; }
+            if (c == 'D') c = '.';
+            lv.g[i] = c;
+        }
+        for (String l : links.split("\s+")) {
+            if (l.isBlank()) continue;
+            String[] ab = l.split("->"); String[] a = ab[0].split(","), b = ab[1].split(",");
+            int from = Integer.parseInt(a[1]) * lv.W + Integer.parseInt(a[0]), to = Integer.parseInt(b[1]) * lv.W + Integer.parseInt(b[0]);
+            if (lv.g[from] == '_') lv.plateTo[from] = to; else if (lv.g[from] == 'F') lv.fuseTo[from] = to;
+        }
+        return lv;
+    }
 
     static boolean solvableVariant(Lvl lv, boolean noSqueeze) {
         Game.Result r = new Game(lv, noSqueeze).solve(300_000);
@@ -381,6 +418,11 @@ public class Evolve {
         // keep the hint solver usable on most of them: gently discourage huge state spaces
         if (e.r.states > BIG_STATES) pen += 0.5 * Math.log10(e.r.states / (double) BIG_STATES);
         e.score = e.rating - pen;
+        if (TARGET > 0) {
+            e.needOk = NEED.isEmpty() || (NEED.equals("squeeze") && e.r.usedSqueeze) || (NEED.equals("shot") && e.r.usedShot)
+                    || (NEED.equals("nosqueeze") && !e.r.usedSqueeze);
+            e.score = -2.0 * Math.abs(e.rating - TARGET) - pen - 0.15 * Math.max(0, e.r.moves - MAXMOVES) - (e.needOk ? 0 : 6);
+        }
         e.why = String.format("crates=%d idle=%d plates idle=%d cannons idle=%d untouched=%d/%d squeeze=%b shot=%b",
                 crates, idleCrates, idlePlates, idleCannons, untouched, floor, e.r.usedSqueeze, e.r.usedShot);
         return e;
@@ -389,6 +431,7 @@ public class Evolve {
     // ---------------- random levels and mutations ----------------
     static final class Style { String name; int maxCrates, maxPlates, maxCannons; Style(String n, int c, int p, int k) { name = n; maxCrates = c; maxPlates = p; maxCannons = k; } }
     static final Style[] STYLES = {
+        new Style("plates4", 6, 4, 0),
         new Style("crates", 6, 0, 0),
         new Style("plates", 5, 3, 0),
         new Style("squeeze", 5, 2, 0),
@@ -557,7 +600,22 @@ public class Evolve {
         String outDir = args[0];
         int threads = Integer.parseInt(args[1]);
         double minutes = Double.parseDouble(args[2]);
-        long seed = args.length > 3 ? Long.parseLong(args[3]) : System.nanoTime();
+        long seed = System.nanoTime();
+        for (int a = 3; a < args.length; a++) {
+            String arg = args[a];
+            if (!arg.contains("=")) { seed = Long.parseLong(arg); continue; }
+            String k = arg.substring(0, arg.indexOf('=')), v = arg.substring(arg.indexOf('=') + 1);
+            switch (k) {
+                case "style": STYLE = v; break;
+                case "target": TARGET = Double.parseDouble(v); break;
+                case "maxmoves": MAXMOVES = Integer.parseInt(v); break;
+                case "need": NEED = v; break;
+                case "from": FROM = readLevel(v); break;
+                case "size": SIZE_W = Integer.parseInt(v.split("x")[0]); SIZE_H = Integer.parseInt(v.split("x")[1]); break;
+                default: throw new IllegalArgumentException(arg);
+            }
+        }
+        final long seedF = seed;
         new File(outDir).mkdirs();
         long end = System.currentTimeMillis() + (long) (minutes * 60_000);
         ExecutorService pool = Executors.newFixedThreadPool(threads);
@@ -565,15 +623,16 @@ public class Evolve {
         for (int t = 0; t < threads; t++) {
             final int tid = t;
             pool.submit(() -> {
-                Random rnd = new Random(seed * 31 + tid);
+                Random rnd = new Random(seedF * 31 + tid);
                 Style st = STYLES[tid % STYLES.length];
+                if (STYLE != null) for (Style x : STYLES) if (x.name.equals(STYLE)) st = x;
                 try (PrintWriter out = new PrintWriter(new FileWriter(new File(outDir, "best-" + tid + ".txt"), true))) {
                     while (System.currentTimeMillis() < end) {
-                        int W = 8 + rnd.nextInt(7), H = 6 + rnd.nextInt(5);
-                        Lvl cur = randomLevel(rnd, W, H, st);
+                        int W = SIZE_W > 0 ? SIZE_W : 8 + rnd.nextInt(7), H = SIZE_H > 0 ? SIZE_H : 6 + rnd.nextInt(5);
+                        Lvl cur = FROM != null ? FROM.copy() : randomLevel(rnd, W, H, st);
                         Eval ce = evaluate(cur, 400_000);
                         int tries = 0;
-                        while (ce.score < -1e8 && tries++ < 300) { cur = randomLevel(rnd, W, H, st); ce = evaluate(cur, 400_000); }
+                        while (FROM == null && ce.score < -1e8 && tries++ < 300) { cur = randomLevel(rnd, W, H, st); ce = evaluate(cur, 400_000); }
                         if (ce.score < -1e8) continue;
                         Lvl best = cur; Eval be = ce;
                         int steps = 20000;
@@ -591,7 +650,10 @@ public class Evolve {
                             if (ce.score > be.score && ce.unneeded >= 0) { best = cur; be = ce; }
                         }
                         runs.incrementAndGet();
-                        if (be.rating >= 12.0 && be.unneeded == 0) {
+                        boolean keep = TARGET > 0
+                                ? Math.abs(be.rating - TARGET) <= 1.2 && be.needOk && be.r.moves <= MAXMOVES * 1.1
+                                : be.rating >= 12.0;
+                        if (keep && be.unneeded == 0) {
                             synchronized (Evolve.class) {
                                 out.printf("### style=%s score=%.2f rating=%.2f moves=%d pushes=%d states=%d ruin=%.2f %s%n",
                                         st.name, be.score, be.rating, be.r.moves, be.r.pushes, be.r.states, be.r.ruin, be.why);

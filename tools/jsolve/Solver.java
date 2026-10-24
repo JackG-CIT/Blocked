@@ -16,6 +16,22 @@ public class Solver {
     static final int[] DX = {0, 0, -1, 1}, DY = {-1, 1, 0, 0};
     static final char[] DC = {'U', 'D', 'L', 'R'};
     static int player0;
+    // Monsters (solver.py MONSTERS): block like walls; each crate shot into one costs it a
+    // health, and with none left all its squares vanish.
+    static final String[] MONSTERS = {"kraken", "hull"};
+    static int[] monsterAt; static long[][] monsterCells;
+
+    static int healthLeft(long[] walls, int m) {
+        int k = 0;
+        while (k < 64 && N + 64 * m + k < WORDS * 64 && get(walls, N + 64 * m + k)) k++;
+        return k;
+    }
+
+    static void hitMonster(long[] walls, int m) {
+        int left = healthLeft(walls, m);
+        if (left > 0) clr(walls, N + 64 * m + left - 1);
+        if (left <= 1) for (int i = 0; i < WORDS; i++) walls[i] &= ~monsterCells[m][i];
+    }
 
     static boolean get(long[] a, int i) { return (a[i >> 6] >>> (i & 63) & 1L) != 0; }
     static void set(long[] a, int i) { a[i >> 6] |= 1L << (i & 63); }
@@ -30,7 +46,13 @@ public class Solver {
         BufferedReader r = new BufferedReader(new FileReader(path));
         String[] wh = r.readLine().trim().split("\\s+");
         W = Integer.parseInt(wh[0]); H = Integer.parseInt(wh[1]); N = W * H;
-        WORDS = (N + 63) / 64; STRIDE = 1 + 2 * WORDS;
+        // Monster health tokens live in bits past the board (N + 64*kind + k), so states with them are bigger.
+        String all = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(path)));
+        boolean anyMonster = all.contains("kraken") || all.contains("hull");
+        WORDS = (N + (anyMonster ? 64 * MONSTERS.length : 0) + 63) / 64; STRIDE = 1 + 2 * WORDS;
+        monsterAt = new int[N]; Arrays.fill(monsterAt, -1);
+        monsterCells = new long[MONSTERS.length][WORDS];
+        int[] health = new int[MONSTERS.length];
         walls0 = new long[WORDS]; boxes0 = new long[WORDS]; exits = new long[WORDS];
         cannons = new long[WORDS]; gates = new long[WORDS]; special = new long[WORDS];
         cdx = new int[N]; cdy = new int[N]; ctrl = new int[N]; Arrays.fill(ctrl, -1);
@@ -46,11 +68,19 @@ public class Solver {
                 case "needbox": needBoxes.add(i); break;
                 case "needgone": needGone.add(i); break;
                 case "minboxes": minBoxes = x; break;
+                case "maxhp": maxHp = x; break;
                 case "needfree": needFree.add(i); break;
                 case "wall": set(walls0, i); break;
                 case "box": set(boxes0, i); break;
                 case "player": player0 = i; break;
                 case "exit": set(exits, i); break;
+                case "kraken": case "hull": {
+                    int m = k.equals("kraken") ? 0 : 1;
+                    monsterAt[i] = m; set(monsterCells[m], i); set(walls0, i);
+                    int hp = t.length > 4 && !t[4].equals("-") ? Integer.parseInt(t[4]) : 3;
+                    health[m] = Math.max(health[m], hp);
+                    break;
+                }
                 case "cannon": {
                     set(cannons, i);
                     String d = t[3];
@@ -66,6 +96,8 @@ public class Solver {
                 }
             }
         }
+        for (int m = 0; m < MONSTERS.length; m++)
+            for (int k = 0; k < health[m]; k++) set(walls0, N + 64 * m + k);
         List<int[]> pl2 = new ArrayList<>();
         for (int[] p : pl) if (!get(cannons, p[1])) { pl2.add(p); set(gates, p[1]); ctrl[p[1]] = p[0]; }
         plates = pl2.toArray(new int[0][]);
@@ -135,7 +167,8 @@ public class Solver {
                 int n = cellAt(cur, dx, dy);
                 if (n == p) return false;   // the shot flattens the pirate
                 if (n < 0 || get(boxes, n) || get(walls, n)) {
-                    if (n >= 0 && get(walls, n) && !get(gates, n)) clr(walls, n);
+                    if (n >= 0 && get(walls, n) && monsterAt[n] >= 0) hitMonster(walls, monsterAt[n]);
+                    else if (n >= 0 && get(walls, n) && !get(gates, n)) clr(walls, n);
                     clr(boxes, cur);
                     if (n >= 0 && get(boxes, n)) clr(boxes, n);
                     if (!settlePlates(p, boxes, walls)) return false;
@@ -191,11 +224,17 @@ public class Solver {
     static int[] depth; static long[] plateMask;
     static List<Integer> goalWalls = new ArrayList<>();
     static List<Integer> needBoxes = new ArrayList<>(), needGone = new ArrayList<>(), needFree = new ArrayList<>();
-    static int minBoxes = 0;
+    static int minBoxes = 0, maxHp = -1;   // maxhp: a goal, every monster's health added up is at most this
     static int boxCount(long[] b) { int n = 0; for (long w : b) n += Long.bitCount(w); return n; }
     /** Win: reached a chest, or (if needbox/needgone lines were given) every listed
      *  square holds a crate and every listed wall has been blasted. */
     static boolean won(int p, long[] boxes, long[] walls) {
+        if (maxHp >= 0) {
+            int hp = 0;
+            for (int m = 0; m < MONSTERS.length; m++) hp += healthLeft(walls, m);
+            if (hp > maxHp) return false;
+            if (needBoxes.isEmpty() && needGone.isEmpty() && needFree.isEmpty()) return true;
+        }
         if (needBoxes.isEmpty() && needGone.isEmpty() && needFree.isEmpty()) return get(exits, p);
         for (int c : needFree) if (get(boxes, c)) return false;
         for (int c : needBoxes) if (!get(boxes, c)) return false;
@@ -213,7 +252,9 @@ public class Solver {
         for (int g : goalWalls) if (get(curWalls, g)) standing++;
         int missing = 0;
         for (int c : needBoxes) if (!get(boxes, c)) missing++;
-        return plates.length - held + 3 * standing + 3 * missing;
+        int hp = 0;
+        for (int m = 0; m < MONSTERS.length; m++) hp += healthLeft(curWalls, m);
+        return plates.length - held + 3 * standing + 3 * missing + 4 * hp;
     }
 
     /** Canonical player cell: itself if on a special square, else min cell of its walkable region. */
@@ -275,6 +316,7 @@ public class Solver {
         for (int[] pt : plates) set(plateMask = plateMask == null ? new long[WORDS] : plateMask, pt[0]);
         if (plateMask == null) plateMask = new long[WORDS];
         stamp = new int[N]; queue = new int[N]; tmp = new long[STRIDE];
+        curWalls = walls0;
 
         long[] b0 = boxes0.clone(), w0 = walls0.clone();
         checks(player0, b0, w0);

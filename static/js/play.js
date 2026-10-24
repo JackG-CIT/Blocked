@@ -9,6 +9,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const timeDisplay = $("timeElapsed");
     const winModal = $("winModal");
 
+    // ========== Story (story.js) ==========
+    // Voyage rooms: the first time, a cutscene for what just happened, then the
+    // chapter's title card. They cover the board, and the timer waits for the first move.
+    if (data.story && window.BlockedStory) {
+        BlockedStory.init({ imgBase: data.imgBase, story: data.story, seenKey: "blocked-story-seen" });
+        if (data.storyBefore) BlockedStory.before(data.storyBefore);
+    }
+
     function formatTime(ms) {
         if (ms == null) return "-";
         const s = ms / 1000;
@@ -70,8 +78,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         const maxW = area.clientWidth - 40;
         const maxH = window.innerHeight - top - below - 48;
-        const size = Blocked.fitTile(level.width, level.height, maxW, Math.max(maxH, 200), 20, 72);
-        table.style.setProperty("--tile", size + "px");
+        Blocked.fitBoard(table, level.width, level.height, maxW, Math.max(maxH, 200), 20, 72);
     }
     fitBoard();
     window.addEventListener("resize", fitBoard);
@@ -97,6 +104,7 @@ document.addEventListener("DOMContentLoaded", function () {
         $("noPlayer").classList.remove("hidden");
         return;
     }
+    fitBoard();   // again, now the board (and any health bar) is drawn
 
     // ========== Hints (shared with the standalone build: hints.js) ==========
     const hints = BlockedHints.create({
@@ -212,11 +220,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 : `Par is ${data.par} moves. Can you find a shorter route?`;
             $("winPar").classList.remove("hidden");
         }
+        $("winStory").textContent = data.chestLine || "";
+        $("winStory").classList.toggle("hidden", !data.chestLine);
         winModal.classList.remove("hidden");
-        if (data.nextUrl) {
+        if (data.nextUrl || data.ending) {
             // Space or Enter moves on straight away (see the keydown handler below).
-            const midChapter = data.room && data.room < 5;
-            $("nextBtn").firstChild.textContent = midChapter ? "Next room ▶ " : "Next level ▶ ";
+            // After the story's last room it plays the ending instead.
+            $("nextBtn").firstChild.textContent = data.ending ? "The end ▶ " : data.midChapter ? "Next room ▶ " : "Next level ▶ ";
             $("nextBtn").href = data.nextUrl;
             $("nextBtn").classList.remove("hidden");
             $("nextBtn").focus();
@@ -229,6 +239,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Fade to dark, then go on once this run has saved (a quick tap never loses a record).
     function goNext() {
+        if (data.ending && !leaving) return theEnd();
         if (!data.nextUrl || leaving) return;
         leaving = true;
         $("curtain").classList.remove("entering");
@@ -236,6 +247,16 @@ document.addEventListener("DOMContentLoaded", function () {
         Promise.all([saving, wait(450)]).then(() => BlockedSound.go(data.nextUrl));
     }
     const nextLevel = goNext;
+
+    // The voyage's last room: the ending plays, then it's back to the map.
+    function theEnd() {
+        leaving = true;
+        winModal.classList.add("hidden");
+        saving.then(() => BlockedStory.play("ending")).then(() => {
+            $("curtain").classList.add("closing");
+            return wait(450);
+        }).then(() => BlockedSound.go(data.homeUrl));
+    }
     $("nextBtn").addEventListener("click", e => { e.preventDefault(); nextLevel(); });
 
     // Walking in from the room before: the board fades in from dark and the
@@ -277,7 +298,7 @@ document.addEventListener("DOMContentLoaded", function () {
             winModal.classList.add("hidden");
             $("tally").classList.add("hidden");
         }
-        if ((event.key === " " || event.key === "Enter") && data.nextUrl) {
+        if ((event.key === " " || event.key === "Enter") && (data.nextUrl || data.ending)) {
             event.preventDefault();
             nextLevel();
         }

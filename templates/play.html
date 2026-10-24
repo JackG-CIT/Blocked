@@ -47,6 +47,13 @@
     </div>
 
     <aside class="sidebar">
+        <div class="panel dark">
+            <h3>This run</h3>
+            <div class="hud-run">
+                <div class="stat"><b id="moveCount">0</b><span>moves</span></div>
+                <div class="stat"><b id="timeElapsed">0.0s</b><span>time</span></div>
+            </div>
+        </div>
         <div class="panel play-controls">
             <h3>Controls</h3>
             <div class="btn-row">
@@ -54,7 +61,7 @@
                 <button class="btn red" id="resetBtn">Restart</button>
                 <button class="btn sea" id="hintBtn">Hint</button>
             </div>
-            {% if payload.room %}
+            {% if payload.midChapter %}
             <label class="check play-option"><input type="checkbox" id="autoAdvance" checked> Walk straight on to the next room</label>
             {% endif %}
             <div class="controls-hint">
@@ -64,13 +71,6 @@
                     <span><kbd>M</kbd> mute</span>
                 <span><kbd>H</kbd> hint</span>
                 <span>Hover a plate, fuse, gate or cannon to see what works what</span>
-            </div>
-        </div>
-        <div class="panel dark">
-            <h3>This run</h3>
-            <div class="hud-run">
-                <div class="stat"><b id="moveCount">0</b><span>moves</span></div>
-                <div class="stat"><b id="timeElapsed">0.0s</b><span>time</span></div>
             </div>
         </div>
         <div class="panel">
@@ -94,6 +94,7 @@
         </div>
         <p class="best" id="winBest">Saving…</p>
         <p class="best hidden" id="winPar"></p>
+        <p class="chest-line hidden" id="winStory"></p>
         <div class="btn-row">
             <a class="btn big hidden" id="nextBtn" href="#">Next level ▶ <kbd>Space</kbd></a>
             <button class="btn wood" id="replayBtn">Play again (R)</button>
@@ -125,5 +126,6 @@
 {% block scripts %}
 <script>window.CURRENT_USER = {{ current_user.username|tojson }};</script>
 <script src="{{ asset('js/hints.js') }}"></script>
+<script src="{{ asset('js/story.js') }}"></script>
 <script src="{{ asset('js/play.js') }}"></script>
 {% endblock %}

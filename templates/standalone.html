@@ -3,6 +3,7 @@
     Paths are relative: the folder works from any static host or a portal's iframe. -#}
 {% from '_sound_menu.html' import sound_menu %}
 {% from '_editor.html' import workspace %}
+{% from '_sound_test.html' import sound_test %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,7 +23,7 @@
             <button class="navlink" type="button" data-go="chapters">Levels</button>
             <button class="navlink" type="button" data-go="workshop">Build</button>
             <button class="navlink" type="button" data-go="help">How to play</button>
-            {{ sound_menu() }}
+            {{ sound_menu(test_screen='sounds') }}
         </nav>
     </header>
 
@@ -38,6 +39,7 @@
                     <button class="btn wood" type="button" data-go="chapters">Choose a level</button>
                     <button class="btn sea" type="button" data-go="workshop">Build your own</button>
                 </div>
+                <button class="btn small sea" type="button" data-story-scene="intro">Watch the intro</button>
                 <p class="progress-label" id="titleProgress"></p>
             </div>
         </section>
@@ -47,6 +49,14 @@
             <div class="section-head">
                 <h2>The Voyage</h2>
                 <p>Clear each room to unlock the next.</p>
+                <div class="view-toggle" role="group" aria-label="Show the voyage as">
+                    <button type="button" data-view="map">Map</button>
+                    <button type="button" data-view="list">List</button>
+                </div>
+            </div>
+            <div id="voyageMap" class="hidden">
+                <div class="map-tools" id="sceneButtons"></div>
+                <div class="voyage-map" id="voyageMapBody"></div>
             </div>
             <div id="chapterList"></div>
         </section>
@@ -85,6 +95,13 @@
 
                 </div>
                 <aside class="sidebar">
+                    <div class="panel dark">
+                        <h3>This run</h3>
+                        <div class="hud-run">
+                            <div class="stat"><b id="moveCount">0</b><span>moves</span></div>
+                            <div class="stat"><b id="timeElapsed">0.0s</b><span>time</span></div>
+                        </div>
+                    </div>
             <div class="panel play-controls">
                 <h3>Controls</h3>
                 <div class="btn-row">
@@ -102,13 +119,6 @@
                     <span>Swipe the board on a touch screen</span>
                 </div>
             </div>
-                    <div class="panel dark">
-                        <h3>This run</h3>
-                        <div class="hud-run">
-                            <div class="stat"><b id="moveCount">0</b><span>moves</span></div>
-                            <div class="stat"><b id="timeElapsed">0.0s</b><span>time</span></div>
-                        </div>
-                    </div>
                     <div class="panel">
                         <h3>Your record</h3>
                         <dl class="stat-list" id="myStats"></dl>
@@ -142,6 +152,11 @@
             </div>
         </section>
 
+        <!-- Sound test: every track and effect (shared with the website's /sounds page) -->
+        <section class="screen hidden" id="screen-sounds">
+            {{ sound_test() }}
+        </section>
+
         <!-- How to play -->
         <section class="screen hidden" id="screen-help">
             <div class="panel help">
@@ -165,6 +180,7 @@
             </div>
             <p class="best" id="winBest"></p>
             <p class="best hidden" id="winPar"></p>
+            <p class="chest-line hidden" id="winStory"></p>
             <div class="btn-row">
                 <button class="btn big hidden" type="button" id="nextBtn">Next level ▶ <kbd>Space</kbd></button>
                 <button class="btn wood" type="button" id="replayBtn">Play again (R)</button>
@@ -216,6 +232,8 @@
     <script src="js/hints.js"></script>
     <script src="js/editor.js"></script>
     <script src="js/soundmenu.js"></script>
+    <script src="js/soundtest.js"></script>
+    <script src="js/story.js"></script>
     <script src="js/portal.js"></script>
     <script src="js/standalone.js"></script>
 </body>

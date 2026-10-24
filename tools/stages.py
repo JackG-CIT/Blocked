@@ -10,8 +10,8 @@ JAVA = r"C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot\bin\java.exe"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
-def level_tiles(rows, links):
-    spec = {'map': [r.replace('D', '.') for r in rows], 'links': links}
+def level_tiles(rows, links, health=None):
+    spec = {'map': [r.replace('D', '.') for r in rows], 'links': links, 'health': health or {}}
     return parse(spec)
 
 
@@ -21,7 +21,11 @@ def tiles_for_state(W, H, tiles, F, state):
     out = [t for t in tiles if t['type'] in ('pressureplate', 'fuse', 'cannon', 'exit')]
     for i in range(W * H):
         x, y = i % W, i // W
-        if walls >> i & 1 and not F.gates >> i & 1:
+        if walls >> i & 1 and i in F.monster_at:   # a living monster square, with its health left
+            m = F.monster_at[i]
+            left = bin((walls >> (F.token0 + 64 * m)) & ((1 << 64) - 1)).count('1')
+            out.append({'type': fast.MONSTERS[m], 'x': x, 'y': y, 'direction': None, 'aX': left, 'aY': None})
+        elif walls >> i & 1 and not F.gates >> i & 1:
             out.append({'type': 'wall', 'x': x, 'y': y, 'direction': None, 'aX': None, 'aY': None})
         if boxes >> i & 1:
             out.append({'type': 'box', 'x': x, 'y': y, 'direction': None, 'aX': None, 'aY': None})
@@ -29,7 +33,7 @@ def tiles_for_state(W, H, tiles, F, state):
     return out
 
 
-def run_java(W, H, tiles, mode, cap, xmx, need=(), goals=(), gone=(), minboxes=0, free=()):
+def run_java(W, H, tiles, mode, cap, xmx, need=(), goals=(), gone=(), minboxes=0, free=(), maxhp=None):
     path = os.path.join(HERE, 'jsolve', 'stage.txt')
     with open(path, 'w') as f:
         f.write(f"{W} {H}\n")
@@ -39,6 +43,8 @@ def run_java(W, H, tiles, mode, cap, xmx, need=(), goals=(), gone=(), minboxes=0
             f.write(f"needbox {nx} {ny} - - -\n")
         if minboxes:
             f.write(f"minboxes {minboxes} 0 - - -\n")
+        if maxhp is not None:
+            f.write(f"maxhp {maxhp} 0 - - -\n")
         for gx, gy in gone:
             f.write(f"needgone {gx} {gy} - - -\n")
         for fx, fy in free:
@@ -58,9 +64,9 @@ def run_java(W, H, tiles, mode, cap, xmx, need=(), goals=(), gone=(), minboxes=0
     return steps, head
 
 
-def solve_stages(rows, links, stages, mode='macro', cap=30_000_000, xmx='20g'):
+def solve_stages(rows, links, stages, mode='macro', cap=30_000_000, xmx='20g', health=None):
     """stages: list of dicts {need: [(x,y)...]} or {'exit': True}, optional goals/mode/cap."""
-    W, H, tiles = level_tiles(rows, links)
+    W, H, tiles = level_tiles(rows, links, health)
     F0 = fast.Fast(W, H, tiles)
     state = F0.start
     full = []
@@ -71,7 +77,7 @@ def solve_stages(rows, links, stages, mode='macro', cap=30_000_000, xmx='20g'):
         assert F.start == state, 'state rebuild mismatch'
         steps, head = run_java(W, H, cur_tiles, st.get('mode', mode), st.get('cap', cap), xmx,
                                need=st.get('need', ()), goals=st.get('goals', ()), gone=st.get('gone', ()),
-                               minboxes=st.get('min', 0), free=st.get('free', ()))
+                               minboxes=st.get('min', 0), free=st.get('free', ()), maxhp=st.get('hp'))
         if steps is None:
             print(f"stage {n} {st}: FAILED {' '.join(head[1:])} ({time.time()-t:.0f}s)")
             print("PARTIAL " + ''.join(full))
@@ -95,8 +101,8 @@ def solve_stages(rows, links, stages, mode='macro', cap=30_000_000, xmx='20g'):
     return ''.join(full) if won else None
 
 
-def render(rows, links, moves):
-    W, H, tiles = level_tiles(rows, links)
+def render(rows, links, moves, health=None):
+    W, H, tiles = level_tiles(rows, links, health)
     F = fast.Fast(W, H, tiles)
     s = F.start
     for ch in moves:
@@ -111,6 +117,7 @@ def render(rows, links, moves):
             i = y * W + x
             if i == p: row += 'P'
             elif boxes >> i & 1: row += '=' if i in plates else 'B'
+            elif walls >> i & 1 and i in F.monster_at: row += 'KH'[F.monster_at[i]]
             elif walls >> i & 1: row += 'D' if F.gates >> i & 1 else '#'
             elif i in F.cannons: row += {(0, -1): '^', (0, 1): 'v', (-1, 0): '<', (1, 0): '>'}[F.cannons[i]]
             elif i in plates: row += '_'

@@ -1,118 +1,79 @@
-# Blocked: story draft
+# Blocked: story outline
 
-A first draft to react to: change anything. Each line below has a home in the game already:
-- **Chapter intros:** a title card when you start a chapter's first room. This needs a small screen added.
-- **Room lines:** the `'transition'` line in `seed_levels.py`, shown on the tally as you walk on to the next room.
-- **Chapter-end lines:** shown on the "Treasure found!" popup.
-- **Ending:** shown after the last level.
+Outline v3, matched to the reorganised voyage (7 chapters plus an optional Expert Waters chapter). The shape is set, and names and wording are still open.
+
+**All story text now lives in `story.py`**, keyed by chapter title and level name rather than by number, so it survives the reshuffle. Both versions of the game read it directly (nothing goes in `seed_levels.py`): room lines on the tally, chapter title cards, chest lines on each finale's popup, the cutscenes and the map.
+
+## The shape
+
+| Part | Chapter | Where | Mechanic |
+| --- | --- | --- | --- |
+| **1. Escape** | Sea Legs | The *Castle*'s cargo hold | crates |
+| | Pressure | The *Castle*'s lower decks | pressure plates |
+| | Locks | The brig and upper decks: free the crew, steal Rook's jolly boat | advanced plates |
+| **2. Get your ship back** | The Squeeze | Rook's hidden harbour, with lock gates on the docks | the squeeze |
+| | Gunpowder | The harbour fort: blast the sea gate, sail the *White Knight* out | cannons |
+| **3. The voyage** | Davy Jones' Locker | The Graveyard of Ships: salvage powder from wrecks on the way to the X | carried resources |
+| | Endgame *(name TBD)* | The X: **deck battle** with the *Black Queen*, then the **kraken** guarding the Hoard | finale |
+| *Bonus* | Expert Waters | Bishop's workshop: "YOU THINK THOSE WERE HARD?" | expert levels |
+
+The ending comes after the kraken, when the crew reaches the Lost King's Hoard.
 
 ## The premise
 
-You're **Patch**, the youngest deckhand aboard the *Gull*, an honest little merchant ship. One foggy night the *Iron Rook* comes alongside: Captain **Ebenezer Rook**, the most feared pirate on the Salt Coast, and his iron-plated flagship. Rook's crew takes the *Gull*'s cargo, its captain, and its crew, and slings the lot into the *Rook*'s hold.
+You're **Pawn**, the smallest deckhand aboard the *White Knight*, the smallest piece on the board. One foggy night Captain **Rook** and his iron-plated ship, the *Castle*, come out of the fog. Rook's crew throws Captain Knight and the crew into the *Castle*'s brig, and tows the *White Knight* off to his hidden harbour.
 
 They forgot about you. You were asleep in a crate.
 
-Now you're loose on the most heavily locked ship that ever sailed. Rook doesn't trust doors, so every passage aboard the *Iron Rook* is held shut by weight, by clockwork, or by cannon. You'll have to push, plate, squeeze and blast your way up through the decks, free your crew, take back what's yours, and sink Rook for good.
+## The cast (chess theme)
 
-## The cast
+**Black pieces:**
+- **Captain Rook:** big, blunt, only moves in straight lines. "A shut door never lies."
+- **Bishop:** Rook's engineer. Never comes at anything straight, and rigged every trap. *(The level notes could be his chalk scrawls.)*
+- ***Castle*:** Rook's ship (Part 1).
+- ***Black Queen*:** Rook's flagship (the finale).
 
-- **Patch:** you. Small, stubborn, good at shoving things.
-- **Captain Ebenezer Rook:** the villain. Collects treasure and padlocks in equal measure. His motto: "A shut door never lies."
-- **"Gears" Gallagher:** Rook's engineer, who rigged the ship's plates and gates. Leaves sarcastic notes chalked on the walls. *(You could make the level notes his chalk scrawls.)*
-- **Captain Marigold Vane:** captain of the *Gull*, locked in Rook's brig. Patch's hero.
-- **The *Kraken's Maw*:** Rook's sister ship, bigger and meaner, which turns up in the last act. *(Your "sink the neighbouring ship" finale.)*
+**White pieces:**
+- **Pawn:** you. At the end Pawn crosses the board and is *promoted* to captain.
+- **Captain Knight:** your captain. Moves in strange, clever ways. *(The draft calls Knight "she"; change it if you like.)*
+- ***White Knight*:** your ship.
+- **The crew:** names to come.
 
-## Chapter 1: Sea Legs (the cargo hold)
+**The prize:** the **Lost King's Hoard**, guarded by a kraken. The last word of the game is **"Checkmate."**
 
-**Intro:** *You wake in the dark, wedged between crates that smell of pepper and tar. Somewhere above, boots stomp and Rook's crew laughs over the* Gull*'s stolen cargo. The hold is packed to the beams. If you want out, you'll have to make room.*
+## The map
 
-| Room | Line on the tally |
+The map is the default level select, with a **Map / List** toggle.
+- **Part 1** (Sea Legs, Pressure, Locks): a cut-away side view of the *Castle*, one deck per chapter, climbing upward.
+- **Parts 2–3:** after the escape cutscene, the view pulls out to an **ocean chart**: the harbour, the fort, the Graveyard of Ships, then the X. Your marker starts as the jolly boat and becomes the *White Knight* after Gunpowder. The *Black Queen*'s sail appears after Davy Jones' Locker.
+- Each chapter's `'part'` in `story.py` (`ship` / `sea`) says which map it goes on.
+
+## Cutscenes (animated pixel scenes)
+
+**All six are built.** They play full screen with no narration, just the characters' lines in speech bubbles. Any key or a tap skips them. Each plays once, and the map has "Watch again" buttons for the ones you've seen. What happens in each shot (`plan`) and the words on screen (`lines`) are in `story.py` → `CUTSCENES`. A scene plays before the first room of the next chapter, then that chapter's title card. The ending plays from the "The end ▶" button on the Endgame's last room.
+
+| Plays | Scene |
 | --- | --- |
-| 1 Shore Leave | The crates creak behind you. Nobody heard. Probably. |
-| 2 Heave Ho | Pepper sacks, rum casks, someone's spare boots. Rook steals everything. |
-| 3 Wedged | That crate's not going anywhere now. Neither are you, if you're careless. |
-| 4 One at a Time | Light spills through a trapdoor above. The cargo master's cabin. |
-| 5 Stowaway Shuffle *(chest)* | **Treasure found!** Captain Vane's sea chest, with her compass still inside. The needle doesn't point north. It points up, towards the brig. |
+| First time the game opens | **Intro:** the *White Knight* at night, the *Castle* from the fog, crew captured, Pawn asleep in a crate |
+| After Locks | **Escape:** onto the top deck, steal the jolly boat, row into the fog. Rook in his nightshirt: "PAWN!" |
+| After Gunpowder | **Ship free:** the sea gate blows, the *White Knight* sails out |
+| After Davy Jones' Locker | **The *Black Queen*:** the crown-shaped island ahead, a black sail behind |
+| After the deck battle | **Kraken:** the *Black Queen* sinks ("Check."), then the water boils |
+| After the kraken | **Ending:** the Hoard, the oversized captain's hat, "CHECKMATE." |
 
-## Chapter 2: Pressure (the orlop deck)
+Smaller scenes could go at other chapter ends or mid-chapter later. Each chapter also gets a short **intro** on its title card and an **end line** on its "Treasure found!" popup (both in `story.py` → `CHAPTERS`).
 
-**Intro:** *The deck above the hold is Gears Gallagher's pride: every door is held shut until something heavy sits on the right plank. "WEIGHT IS TRUST," says a chalk scrawl on the wall. Patch doesn't weigh much. Good thing crates do.*
+## Per-room lines
 
-| Room | Line on the tally |
-| --- | --- |
-| 6 Stomp | So that's how Rook's doors work. Gallagher, you clever menace. |
-| 7 Dead Weight | Chalked on the wall: "NO, YOU CAN'T BE IN TWO PLACES AT ONCE. TRIED IT." |
-| 8 Two Locks | The doors are getting greedy. Two plates, two crates. |
-| 9 Hold the Door | A ladder leads up into the dark. The air smells of rope and old fish. |
-| 10 Seven Seals *(chest)* | **Treasure found!** The* Gull*'s strongbox. Inside, under the silver, a ring of brass keys, every one of them filed blank. |
+These are in `story.py` → `TRANSITIONS`, one line per level name, written so they don't depend on exact order. There are none yet for:
+- the new levels in Locks, The Squeeze and Davy Jones' Locker (no names yet)
+- the finale levels (each chapter finale shows its chapter-end line instead)
+- cut levels (Stomp, Fire in the Hole)
 
-## Chapter 3: Locks and Keys (the lockers and the brig)
-
-**Intro:** *The brig deck. Somewhere ahead, Captain Vane and the* Gull*'s crew are locked in Rook's cells. These gates are Gallagher's masterwork: slam one on a crate and it doesn't jam. It* shoves*. Rook calls it "the squeeze." Patch calls it a way in.*
-
-| Room | Line on the tally |
-| --- | --- |
-| 11 Squeeze Play | The gate spat the crate clean into the sealed pocket. Gallagher would be proud. Or furious. |
-| 12 Tangled Rigging | Every rope runs somewhere you didn't expect. Somebody below deck hollers: "Who's there?" |
-| 13 Cargo Hold | A voice from a cell: "Patch? Is that you? Get us OUT of here!" |
-| 14 Nine Locks | Nine locks for one door. Rook really doesn't like visitors. |
-| 15 Pinch Point *(chest)* | **Treasure found!** Rook's key chest. The cell doors swing open, and Captain Vane steps out: "Good work, deckhand. Now let's take this ship." |
-
-## Chapter 4: Gunpowder (the gun deck)
-
-**Intro:** *The crew is free, but Rook still holds the upper decks, and his gun crews have barred every hatch. Vane has a plan: "Rook's cannons can open doors too, if you aim them at the right walls." She hands you a fuse. "Mind your fingers."*
-
-| Room | Line on the tally |
-| --- | --- |
-| 16 Fire in the Hole | That's one way to knock. Your ears are ringing. |
-| 17 Load and Light | The gun crews are shouting now. They know someone's aboard. |
-| 18 Clear the Way | Rook's voice booms down the hatch: "WHO IS FIRING MY GUNS?" |
-| 19 Powder Keg | Powder monkeys scatter. One salutes you on his way out. |
-| 20 Broadside *(chest)* | **Treasure found!** The gunner's chest, with Rook's charts of the Salt Coast. His secret anchorage is marked... and so is a second ship. |
-
-## Chapter 5: Crossfire (the battle)
-
-**Intro:** *A cannon booms that isn't yours. Out of the fog sails the* Kraken's Maw*, Rook's sister ship, and she's opening fire on her own flagship to stop the mutiny. Shots are flying through every deck. Keep your head down, keep your crates close, and don't stand in front of anything that goes bang.*
-
-| Room | Line on the tally |
-| --- | --- |
-| 21 Open Fire | A shot from the* Maw *punches through the hull just behind you. Close one. |
-| 22 Run the Gauntlet | Vane, from somewhere above: "Keep moving, Patch! We're holding the wheel!" |
-| 23 Powder Monkey | No going back now. The deck behind you is on fire. Only a little. |
-| 24 Crossfire | Rook's crew and the* Maw*'s gunners are shooting at each other. Good. |
-| 25 Powder Room *(chest)* | **Treasure found!** Rook's war chest. It's empty, all spent on the* Maw*. And Rook himself has fled across to her. |
-
-## Chapter 6: Davy Jones' Locker (the last fight)
-
-**Intro:** *The* Iron Rook *is taking on water. Rook is aboard the* Kraken's Maw*, turning her guns to finish the job. Vane takes the wheel: "We've one broadside left in her, Patch. Get below, get those guns loaded, and give him something to remember us by."*
-
-| Room | Line on the tally |
-| --- | --- |
-| 26 The Brig | The brig again. This time you're the one with the keys. |
-| 27 Davy Jones' Locker | Water sloshes round your ankles. The lower decks won't last. |
-| 28 Hair Trigger | One gun primed and firing on its own. The* Maw *is lining up alongside. |
-| 29 The Long Shot | Vane: "She's broadside to us! Every gun you've got, Patch!" |
-| 30 The Last Broadside *(chest)* | *(Ending, below.)* |
-
-## Ending
-
-*The last shot tears through the* Kraken's Maw *at the waterline. She lists, groans, and goes down by the bow, with Captain Rook shouting at the waves all the way. The* Iron Rook *limps into the dawn with the* Gull*'s crew at the helm and the Salt Coast's treasure in her hold.*
-
-*Captain Vane hands you a captain's hat three sizes too big. "Every ship needs someone who's good at shoving things."*
-
-**THE END** *(...unless Gallagher left more doors. He always leaves more doors.)*
-
-## Your "sink the neighbouring ship" finale
-
-This story sets it up: chapter 6 becomes the duel with the *Kraken's Maw*. Your big scrollable level could replace The Last Broadside:
-- The *Iron Rook*'s gun deck runs along one side of a big map, and the *Maw* lies alongside, with her hull as a row of breakable walls.
-- You roam the sinking *Rook* to find crates (powder) and haul them to the guns.
-- Each hit on the *Maw*'s waterline sinks her a bit more. Clear enough hull squares and she goes down.
-- It's a natural fit for real-time shots: you keep moving and loading while the volleys fly.
-
-## Things for you to decide
-1. **Names:** Patch, Captain Ebenezer Rook, Gears Gallagher, Captain Marigold Vane, the *Gull*, the *Iron Rook*, the *Kraken's Maw*. Keep, rename, or replace any of them.
-2. **Tone:** this draft is light and jokey, like the level notes. It could be darker, more serious, or sillier.
-3. **Level notes:** should they become Gallagher's chalk scrawls, with his voice shown in-world on each level? That fits nicely with "the person who built these puzzles".
-4. **Chapter title cards:** shall I add a short title card (chapter name and intro) when you enter a chapter's first room? And an ending screen after the last level?
-5. **The *Gull*'s crew:** do they appear later (calling out, helping), or stay offstage?
+## Still to decide (later)
+1. Final level names and chapter names (e.g. "Endgame" for the finale chapter).
+2. Crew names. Does the good side have a Queen, King and so on?
+3. Level notes as Bishop's chalk?
+4. Any extra cutscenes, and where.
+5. Exact wording everywhere.
+6. Finale level designs (deck battle and kraken).

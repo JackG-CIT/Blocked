@@ -13,6 +13,8 @@ from flask_bcrypt import Bcrypt
 load_dotenv()
 
 import db  # noqa: E402  (reads DATABASE_URL, so it has to come after load_dotenv)
+import chapters  # noqa: E402
+chapters_mod = chapters   # for functions with a local called `chapters`
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-only-secret-change-me')
@@ -24,9 +26,10 @@ login_manager.login_message_category = 'error'
 bcrypt = Bcrypt(app)
 db.init_app(app)
 
-TILE_TYPES = ('player', 'wall', 'box', 'pressureplate', 'cannon', 'fuse', 'exit')
+TILE_TYPES = ('player', 'wall', 'box', 'pressureplate', 'cannon', 'fuse', 'exit', 'kraken', 'hull')
+MAX_HEALTH = 20   # a kraken's or hull's health (solver.py MONSTERS)
 DIRECTIONS = ('up', 'down', 'left', 'right')
-MIN_SIZE, MAX_SIZE = 3, 30
+MIN_SIZE, MAX_SIZE = 3, 48   # big finale boards scroll (engine.js fitBoard)
 USERNAME_RE = re.compile(r'^[A-Za-z0-9_]{3,20}$')
 
 
@@ -177,8 +180,8 @@ def leaderboard(level_id, limit=10):
 # Music slots the pages ask for. static/js/audio.js maps each slot to a track
 # (its PLAYLIST), and static/audio/<slot>.mp3 replaces the synth if present.
 MUSIC_SLOTS = ('lobby', 'chapter1', 'chapter2', 'chapter3', 'chapter4', 'chapter5', 'chapter6',
-               'boss1', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6', 'finale', 'boss', 'milestone')
-CHAPTER_SIZE = 5
+               'boss1', 'boss2', 'boss3', 'boss4', 'boss5', 'boss6', 'finale', 'kraken', 'expert',
+               'boss', 'milestone')
 
 
 def skull_icons(difficulty, empty=True):
@@ -191,33 +194,48 @@ def skull_icons(difficulty, empty=True):
 
 
 def chapter_titles():
-    try:
-        from seed_levels import CHAPTERS
-    except ImportError:
-        CHAPTERS = []
-    return CHAPTERS
+    return chapters.settings()[0]
 
 
 def chapters_of(voyage):
-    """Splits the voyage into chapters of five: [(number, title, first_index, levels)]."""
-    titles = chapter_titles()
-    out = []
-    for start in range(0, len(voyage), CHAPTER_SIZE):
-        n = start // CHAPTER_SIZE
-        title = titles[n] if n < len(titles) else 'Uncharted Waters'
-        out.append((n + 1, title, start, voyage[start:start + CHAPTER_SIZE]))
-    return out
+    """Splits the voyage into its chapters (chapters.py): [(number, title, first_index, levels)]."""
+    return [(ch['number'], ch['title'], ch['start'], voyage[ch['start']:ch['start'] + ch['size']])
+            for ch in chapters.layout(len(voyage))]
 
 
-def music_slot(index, total):
-    """The voyage comes in chapters of five. Each chapter's last level gets that
-    chapter's grand boss version (boss1-boss6); the voyage's final level gets the finale."""
-    chapter = min(index // CHAPTER_SIZE + 1, 6)
-    if index == total - 1:
-        return 'finale'
-    if (index + 1) % CHAPTER_SIZE == 0:
-        return f'boss{chapter}'
-    return f'chapter{chapter}'
+def story_for(titles):
+    """The story text (story.py) for these chapters, for the cutscenes and the map."""
+    import story
+    return story.payload(titles)
+
+
+def story_transition(level):
+    """The line on a room's tally: story.py's line for this level, else the database's."""
+    import story
+    return story.transition(level['name'], level['transition_line'])
+
+
+def voyage_story(voyage, i):
+    """What the play page needs to tell the story around voyage room i:
+    storyBefore  what plays before the room (a cutscene, then the chapter's title card)
+    chestLine    the story line on a chapter finale's "Treasure found!" popup
+    ending       True on the voyage's last room (its popup plays the ending)"""
+    import story
+    voyage_chapters = chapters_of(voyage)
+    told = story.chapter_story([c[1] for c in voyage_chapters])
+    n = next(k for k, c in enumerate(voyage_chapters) if c[2] <= i < c[2] + len(c[3]))
+    number, title, start, levels = voyage_chapters[n]
+    before = {'afterLevel': voyage[i - 1]['name'] if i else None}
+    if i == start:
+        before['afterChapter'] = voyage_chapters[n - 1][1] if n else None
+        before['chapter'] = {'number': number, 'title': title, 'place': told[n]['place'], 'intro': told[n]['intro']}
+    return {
+        'story': story.payload([c[1] for c in voyage_chapters]),
+        'imgBase': url_for('static', filename='img/'),
+        'storyBefore': before,
+        'chestLine': told[n]['end'] if i == start + len(levels) - 1 else None,
+        'ending': i == chapters_mod.ending_index(chapters_mod.layout(len(voyage))),
+    }
 
 
 def engine_level(level):
@@ -304,11 +322,17 @@ def logout():
 @app.route('/')
 def index():
     if not current_user.is_authenticated:
-        return render_template('index.html', guest=True)
+        return render_template('index.html', guest=True, story=story_for(chapter_titles()))
 
     progress = progress_for(current_user.id)
     voyage = campaign()
     open_ids = unlocked_ids(voyage, progress)
+    voyage_chapters = chapters_of(voyage)
+    # The voyage map (static/js/story.js) gets each room's number, state and link.
+    voyage_map = [{'number': number, 'title': title, 'levels': [
+        {'id': lv['id'], 'name': lv['name'], 'number': start + k + 1, 'href': url_for('play', level_id=lv['id']),
+         'state': 'cleared' if lv['id'] in progress else 'open' if lv['id'] in open_ids else 'locked'}
+        for k, lv in enumerate(levels)]} for number, title, start, levels in voyage_chapters]
     community = fetch_levels('l.published = 1 AND l.in_campaign = 0', order='l.id DESC')
     drafts = fetch_levels('l.published = 0 AND l.created_by = ?', (current_user.id,), order='l.id DESC')
 
@@ -317,10 +341,12 @@ def index():
     tiles = tiles_for([lv['id'] for lv in shown])
     previews = {lv['id']: {'width': lv['width'], 'height': lv['height'], 'tiles': tiles[lv['id']]} for lv in shown}
 
-    return render_template('index.html', guest=False, voyage=voyage, chapters=chapters_of(voyage),
+    return render_template('index.html', guest=False, voyage=voyage, chapters=voyage_chapters,
+                           story=story_for([c[1] for c in voyage_chapters]), voyage_map=voyage_map,
                            open_ids=open_ids, community=community,
                            drafts=drafts, progress=progress, previews=previews,
-                           cleared=sum(1 for lv in voyage if lv['id'] in progress), can_edit=can_edit)
+                           cleared=sum(1 for lv in voyage if lv['id'] in progress), can_edit=can_edit,
+                           loose_chapters=chapters.settings()[2])
 
 
 # ----------------- PLAY LEVEL -----------------
@@ -332,7 +358,8 @@ def play(level_id):
         abort(404)
 
     next_url, place, music = None, None, 'voyage'
-    room, flow, auto_advance, chapter_url = 0, False, False, None
+    room, flow, auto_advance, chapter_url, mid_chapter = 0, False, False, None, False
+    story_extra = {}   # the story bits for voyage rooms (story.py, drawn by static/js/story.js)
     if level['in_campaign'] and level['published']:
         voyage = campaign()
         progress = progress_for(current_user.id)
@@ -341,19 +368,20 @@ def play(level_id):
             return redirect(url_for('index'))
         ids = [lv['id'] for lv in voyage]
         i = ids.index(level_id)
-        chapter = chapters_of(voyage)[i // CHAPTER_SIZE]
-        test = ' · Chapter test' if (i + 1) % CHAPTER_SIZE == 0 else ''
-        place = f'Chapter {chapter[0]}: {chapter[1]} · Level {i + 1} of {len(ids)}{test}'
-        music = music_slot(i, len(ids))
-        room = i % CHAPTER_SIZE + 1              # 1-5 within the chapter; 5 is the boss room
-        chapter_url = url_for('index') + f'#chapter-{chapter[0]}'
+        chapter, room = chapters.locate(chapters.layout(len(ids)), i)   # room counts from 1
+        mid_chapter = chapters.walks_on(chapter, room)
+        test = ' · Chapter test' if chapter['rooms'] and chapters.is_boss(chapter, room) and chapter['size'] > 1 else ''
+        place = f"Chapter {chapter['number']}: {chapter['title']} · Level {i + 1} of {len(ids)}{test}"
+        music = chapters.music_slot(chapter, room)
+        chapter_url = url_for('index') + f"#chapter-{chapter['number']}"
         # Playing through the chapter (arrived from the room before, or not cleared
         # yet) walks straight on to the next room. Replaying a cleared room from the
         # home page gets the normal win popup instead.
         flow = request.args.get('flow') == '1' or level_id not in progress
         if i + 1 < len(ids):
             next_url = url_for('play', level_id=ids[i + 1], **({'flow': 1} if flow else {}))
-        auto_advance = flow and room < CHAPTER_SIZE and next_url is not None
+        auto_advance = flow and mid_chapter and next_url is not None
+        story_extra = voyage_story(voyage, i)
 
     payload = {
         'level': engine_level(level),
@@ -365,15 +393,17 @@ def play(level_id):
         'homeUrl': url_for('index'),
         'chapterUrl': chapter_url,
         'room': room,
+        'midChapter': mid_chapter,   # this room ends at a door into the next one
         'autoAdvance': auto_advance,
         'entering': request.args.get('flow') == '1',   # walked in from the room before
-        'transitionLine': level['transition_line'],
+        'transitionLine': story_transition(level),
         'route': level['solution'],   # a known solution: hints follow it on big levels
         # Mid-chapter rooms end at a door or trapdoor; the chest waits at the chapter's end.
-        'exitStyle': 'door' if 1 <= room < CHAPTER_SIZE else 'chest',
+        'exitStyle': 'door' if mid_chapter else 'chest',
+        **story_extra,
     }
-    # The music layers build up room by room (1-4); boss rooms and other pages play in full.
-    music_room = room if 1 <= room < CHAPTER_SIZE else 0
+    # Rooms that walk on tell the music which room this is; boss rooms and other pages play in full.
+    music_room = room if mid_chapter else 0
     return render_template('play.html', level=level, place=place, payload=payload, music=music,
                            music_room=music_room, can_edit=can_edit(level))
 
@@ -428,13 +458,13 @@ def render_editor(level):
 
 
 def editor_exit_style(level):
-    """Voyage rooms 1-4 of a chapter end at a door or trapdoor; everything else at a chest."""
+    """Voyage rooms that walk on to the next room end at a door or trapdoor; everything else at a chest."""
     if not level or not level['in_campaign']:
         return 'chest'
     ids = [lv['id'] for lv in campaign()]
     if level['id'] not in ids:
         return 'chest'
-    return 'door' if ids.index(level['id']) % CHAPTER_SIZE < CHAPTER_SIZE - 1 else 'chest'
+    return 'door' if chapters.walks_on(*chapters.locate(chapters.layout(len(ids)), ids.index(level['id']))) else 'chest'
 
 
 def flow_neighbours(level):
@@ -448,12 +478,13 @@ def flow_neighbours(level):
     if level['id'] not in ids:
         return None
     i = ids.index(level['id'])
+    chapter, room = chapters.locate(chapters.layout(len(ids)), i)
     out = {}
-    if i % CHAPTER_SIZE != 0:
+    if chapter['rooms'] and room > 1:
         prev = voyage[i - 1]
         out['prevName'] = prev['name']
         out['prevExit'] = sorted(flow.exit_sides(prev['width'], prev['height'], tiles_for([prev['id']])[prev['id']]))
-    if (i + 1) % CHAPTER_SIZE != 0 and i + 1 < len(voyage):
+    if chapters.walks_on(chapter, room) and i + 1 < len(voyage):
         nxt = voyage[i + 1]
         out['nextName'] = nxt['name']
         out['nextEntrance'] = sorted(flow.entrance_sides(nxt['width'], nxt['height'], tiles_for([nxt['id']])[nxt['id']]))
@@ -518,6 +549,8 @@ def clean_level(data):
             tile['direction'] = t.get('direction') if t.get('direction') in DIRECTIONS else 'up'
         if tile_type in ('pressureplate', 'fuse'):
             tile['aX'], tile['aY'] = _int_or_none(t.get('aX')), _int_or_none(t.get('aY'))
+        if tile_type in ('kraken', 'hull'):   # aX holds its health
+            tile['aX'] = max(1, min(MAX_HEALTH, _int_or_none(t.get('aX')) or 3))
         tiles.append(tile)
 
     published = bool(data.get('published'))
@@ -783,7 +816,7 @@ def check_flow(verify):
         voyage = campaign()
         tiles = tiles_for([lv['id'] for lv in voyage])
         rooms = [dict(lv, tiles=tiles[lv['id']]) for lv in voyage]
-        problems = flow.check(rooms, CHAPTER_SIZE, verify=verify)
+        problems = flow.check(rooms, chapters.layout(len(rooms)), verify=verify)
     if not problems:
         click.echo('Every room lines up with the next one.')
         return

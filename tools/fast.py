@@ -3,6 +3,7 @@ from collections import deque
 
 DIRS = (('U', 0, -1), ('D', 0, 1), ('L', -1, 0), ('R', 1, 0))
 CDIR = {'up': (0, -1), 'down': (0, 1), 'left': (-1, 0), 'right': (1, 0)}
+MONSTERS = ('kraken', 'hull')   # solver.py MONSTERS: health lives in bits past the board
 
 
 class Fast:
@@ -17,6 +18,9 @@ class Fast:
         self.cannons = {}
         plates, fuses = [], []
         player = None
+        self.monster_cells = [0] * len(MONSTERS)
+        self.monster_at = {}
+        health = [0] * len(MONSTERS)
         for t in sorted(tiles, key=lambda t: (t['y'], t['x'])):
             i = idx(t['x'], t['y'])
             k = t['type'].lower()
@@ -28,6 +32,18 @@ class Fast:
             elif k == 'cannon': self.cannons[i] = CDIR.get(t.get('direction') or 'up', (0, -1))
             elif k == 'pressureplate': plates.append((i, tgt))
             elif k == 'fuse': fuses.append((i, tgt))
+            elif k in MONSTERS:
+                m = MONSTERS.index(k)
+                self.monster_cells[m] |= 1 << i
+                self.monster_at[i] = m
+                health[m] = max(health[m], t.get('aX') or 3)
+        # Health token k (1..health) of monster m is bit W*H + 64*m + k - 1 of walls.
+        self.token0 = W * H
+        for m in range(len(MONSTERS)):
+            if self.monster_cells[m]:
+                self.walls0 |= self.monster_cells[m]
+                for k in range(health[m]):
+                    self.walls0 |= 1 << (self.token0 + 64 * m + k)
         inside = lambda p: p is not None and 0 <= p[0] < W and 0 <= p[1] < H
         self.cannon_mask = 0
         for c in self.cannons: self.cannon_mask |= 1 << c
@@ -65,6 +81,16 @@ class Fast:
     def step_cell(self, i, dx, dy):
         x, y = i % self.W + dx, i // self.W + dy
         return y * self.W + x if 0 <= x < self.W and 0 <= y < self.H else -1
+
+    def hit_monster(self, m, walls):
+        """One less health for monster m; with none left its squares vanish."""
+        base = self.token0 + 64 * m
+        left = (walls >> base) & ((1 << 64) - 1)
+        top = left.bit_length()
+        walls &= ~(1 << (base + top - 1))
+        if top <= 1:
+            walls &= ~self.monster_cells[m]
+        return walls
 
     def settle_plates(self, p, boxes, walls):
         """Open or shut every gate (with the squeeze). Returns (boxes, walls), or None if a gate crushed the pirate."""
@@ -109,7 +135,9 @@ class Fast:
                 if n == p:          # the shot flattens the pirate
                     return None
                 if n < 0 or boxes >> n & 1 or walls >> n & 1:
-                    if n >= 0 and walls >> n & 1 and not self.gates >> n & 1:
+                    if n >= 0 and n in self.monster_at and walls >> n & 1:
+                        walls = self.hit_monster(self.monster_at[n], walls)
+                    elif n >= 0 and walls >> n & 1 and not self.gates >> n & 1:
                         walls &= ~(1 << n)
                     boxes &= ~(1 << cur)
                     if n >= 0 and boxes >> n & 1:

@@ -284,15 +284,16 @@
         },
         // Treasure! A fanfare plus jingling coins.
         win() {
+            const L = 0.55;   // overall level of the fanfare (1 = the original, which was a bit loud)
             const notes = [["G4", 0, 0.12], ["B4", 0.12, 0.12], ["D5", 0.24, 0.12], ["G5", 0.36, 0.5]];
             notes.forEach(([n, at, dur]) => {
-                tone(sfxBus, { type: "pulse", f: freq(n), at, dur, vol: 0.16, filter: 3500, vibrato: 0.01 });
-                tone(sfxBus, { type: "triangle", f: freq(n) / 2, at, dur, vol: 0.18 });
+                tone(sfxBus, { type: "pulse", f: freq(n), at, dur, vol: 0.16 * L, filter: 3500, vibrato: 0.01 });
+                tone(sfxBus, { type: "triangle", f: freq(n) / 2, at, dur, vol: 0.18 * L });
             });
             for (let i = 0; i < 9; i++) {
                 const at = 0.4 + i * 0.07 * jitter(0.3);
-                tone(sfxBus, { type: "square", f: 2200 * jitter(0.25), dur: 0.04, at, vol: 0.05, filter: 7000 });
-                tone(sfxBus, { type: "sine", f: 3300 * jitter(0.2), dur: 0.12, at: at + 0.01, vol: 0.06 });
+                tone(sfxBus, { type: "square", f: 2200 * jitter(0.25), dur: 0.04, at, vol: 0.05 * L, filter: 7000 });
+                tone(sfxBus, { type: "sine", f: 3300 * jitter(0.2), dur: 0.12, at: at + 0.01, vol: 0.06 * L });
             }
         },
         // UI
@@ -373,17 +374,21 @@
         if (type === "pulse") osc.setPeriodicWave(pulse()); else osc.type = type;
         osc.frequency.value = f;
         osc.detune.value = detune;
-        if (vibrato) {
-            // Vibrato fades in after vibDelay, the way a player leans into a long note.
-            const lfo = ctx.createOscillator(), depth = ctx.createGain();
-            lfo.frequency.value = 5;
-            depth.gain.setValueAtTime(0, t);
-            depth.gain.setValueAtTime(0, t + vibDelay);
-            depth.gain.linearRampToValueAtTime(f * vibrato, t + vibDelay + 0.25);
-            lfo.connect(depth);
-            depth.connect(osc.frequency);
-            lfo.start(t);
-            lfo.stop(t + d + release);
+        // Vibrato: the pitch wobbles 5 times a second, fading in after vibDelay the
+        // way a player leans into a long note. It's written straight onto the note's
+        // pitch as a curve (100 points a second) rather than driven by a second,
+        // live oscillator: the same wobble, at a fraction of the work for the
+        // browser, which is what kept the music from stuttering on slower computers.
+        if (vibrato && d + release > vibDelay) {
+            const from = t + vibDelay, to = t + d + release, depth = f * vibrato;
+            const n = Math.max(2, Math.ceil((to - from) * 100));
+            const curve = new Float32Array(n);
+            for (let k = 0; k < n; k++) {
+                const at = from + (to - from) * k / (n - 1);
+                const fade = Math.min(1, (at - from) / 0.25);
+                curve[k] = f + depth * fade * Math.sin(2 * Math.PI * 5 * (at - t));
+            }
+            osc.frequency.setValueCurveAtTime(curve, from, to - from);
         }
         const g = ctx.createGain();
         g.gain.setValueAtTime(0.0001, t);
@@ -394,8 +399,15 @@
         if (filter) {
             const lp = ctx.createBiquadFilter();
             lp.type = "lowpass";
-            lp.frequency.setValueAtTime(sweep || filter, t);
-            if (sweep) lp.frequency.exponentialRampToValueAtTime(filter, t + Math.max(attack * 2, 0.12));
+            // A fixed cutoff is set as a plain value: an automated one (setValueAtTime)
+            // makes the browser recompute the filter for every sample, which is
+            // what made the music stutter on slower computers. Same sound either way.
+            if (sweep) {
+                lp.frequency.setValueAtTime(sweep, t);
+                lp.frequency.exponentialRampToValueAtTime(filter, t + Math.max(attack * 2, 0.12));
+            } else {
+                lp.frequency.value = filter;
+            }
             osc.connect(lp);
             n = lp;
         }
@@ -403,6 +415,8 @@
         g.connect(bus);
         osc.start(t);
         osc.stop(t + d + release + 0.05);
+        // Unhook the note's nodes once it's done, so a long session doesn't pile them up.
+        osc.onended = () => { g.disconnect(); if (n !== osc) n.disconnect(); };
     }
 
     function drum(bus, t, kind, v) {
@@ -522,19 +536,21 @@
     // milestone, open-ocean, fair-winds.
     const PLAYLIST = {
         lobby: "set-sail",        // title screen and menus
-        chapter1: "sea-legs",     // levels 1-5    Sea Legs
-        chapter2: "pressure",     // levels 6-10   Pressure (plates and gates)
-        chapter3: "locks-keys",   // levels 11-15  Locks and Keys
-        chapter4: "gunpowder",    // levels 16-20  Gunpowder (cannons)
-        chapter5: "crossfire",    // levels 21-25  Crossfire
-        chapter6: "davy-jones",   // levels 26-30  Davy Jones (finale)
-        boss1: "sea-legs-boss",   // level 5, the hardest of chapter 1
-        boss2: "pressure-boss",   // level 10
-        boss3: "locks-keys-boss", // level 15
-        boss4: "gunpowder-boss",  // level 20
-        boss5: "crossfire-boss",  // level 25
-        boss6: "davy-jones-boss", // level 30
-        finale: "boss-storm",     // the voyage's final grand level(s)
+        chapter1: "sea-legs",     // chapter 1  Sea Legs
+        chapter2: "pressure",     // chapter 2  Pressure (plates and gates)
+        chapter3: "locks-keys",   // chapter 3  Locks (bigger plate puzzles)
+        chapter4: "crossfire",    // chapter 4  The Squeeze
+        chapter5: "gunpowder",    // chapter 5  Gunpowder (cannons)
+        chapter6: "davy-jones",   // chapter 6  Davy Jones' Locker
+        boss1: "sea-legs-boss",   // each chapter's last room (its test)
+        boss2: "pressure-boss",
+        boss3: "locks-keys-boss",
+        boss4: "crossfire-boss",
+        boss5: "gunpowder-boss",
+        boss6: "davy-jones-boss",
+        finale: "boss-storm",     // chapter 7 Endgame: the deck battle
+        kraken: "boss-kraken",    // chapter 7's last level: the kraken
+        expert: "boss-storm-v2",  // the Expert Waters bonus chapter
         milestone: "milestone",   // a big milestone (not used by any page yet)
     };
     // Other names pages may use: older ones, and "boss", which now means the finale.

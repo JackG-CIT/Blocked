@@ -25,9 +25,24 @@ To load the main voyage (see `seed_levels.py`):
 flask --app app seed
 ```
 
-The voyage is 30 levels in six chapters of five. Each chapter brings in a new idea, and its fifth level is a harder chapter test that plays the boss music. The home page groups the levels by chapter, and chapter titles live in `CHAPTERS` at the bottom of `seed_levels.py`.
+The voyage is 49 levels in eight chapters, and chapters can be any length:
+
+| # | Chapter | Levels |
+| --- | --- | --- |
+| 1 | Sea Legs | Shore Leave, Heave Ho, Wedged, One at a Time, Stowaway Shuffle |
+| 2 | Pressure | Dead Weight, Two Locks, Hold the Door, Tangled Rigging |
+| 3 | Locks | Cargo Hold, The Brig, Deadbolt, Nine Locks, Seven Seals |
+| 4 | The Squeeze | Squeeze Play, Shove Off, Lock Gate, Dry Dock, Pinch Point |
+| 5 | Gunpowder | Load and Light, Clear the Way, Powder Keg, Broadside, Open Fire, Run the Gauntlet, Powder Monkey, Crossfire |
+| 6 | Davy Jones' Locker | Davy Jones' Locker, Hair Trigger, The Long Shot, The Last Broadside |
+| 7 | Endgame | The Black Queen (sink Rook's flagship), The Kraken |
+| 8 | Expert Waters (bonus, after the ending) | Stomp, Fire in the Hole, the twelve hard levels, Powder Room, Brig Break |
+
+Each chapter brings in a new idea, and its last level is a harder chapter test that plays the boss music. The bottom of `seed_levels.py` has the chapter titles (`CHAPTERS`), how many levels each has (`CHAPTER_LENGTHS`), the chapters whose levels each stand alone with their own chest (`LOOSE_CHAPTERS`: the finale and Expert Waters), and the bonus chapters after the story's ending (`BONUS_CHAPTERS`). `chapters.py` turns those into chapters for the website, the standalone build and the line-up check. Don't edit `seed_levels.py` by hand: change the list in `tools/assemble.py` and run it (see `tools/README.md`).
 
 Story text: give a level an optional `'transition'` line in `seed_levels.py` and it shows on the tally as the player walks on to the next room.
+
+**The story** (see `STORY.md`) lives in `story.py`, keyed by chapter title and level name so a reshuffle can't wipe it. `static/js/story.js` draws it in both versions: the animated intro cutscene (plays the first time someone opens the game, skippable with Esc, replayable with **Watch the intro**) and the voyage **map**, which is now the default level select. The first chapters show as decks of Rook's ship, the rest as stops on an ocean chart, as set by each chapter's `'part'` in `story.py`. The **Map / List** switch brings back the chapter list, and the choice is remembered in the browser. `tools/tests/story_test.py` tests all of it on the website (against a copy of the database) and in the standalone build.
 
 **Do the rooms line up?** `flask --app app check-flow` reports where a room's exit side doesn't face the next room's entrance side. The exit side is the wall the chest sits on, and the entrance side is the wall nearest the pirate's start. It also lists rooms whose chest sits inside the room. For each mismatch it suggests a mirror or rotation that would fix it. Add `--verify` to re-solve each suggestion, because turning a level changes how the squeeze plays out (it scans from the top-right). Nothing is changed automatically. The editor's Checks box gives the same warnings for voyage rooms as you edit.
 
@@ -56,7 +71,7 @@ What the standalone version has:
 - Keyboard, touch (swipe the board or use the arrow pad) and small screens.
 - No leaderboards, accounts or Crew Waters.
 
-Both versions share the same game code: `engine.js` (board and rules), `solver.js` and `hints.js` (hints), `audio.js` (music and sound), `editor.js`, `soundmenu.js`, the sprites and `style.css`, plus the shared editor and sound-menu markup in `templates/_editor.html` and `templates/_sound_menu.html`. A fix to any of them lands in both versions the next time you export. Only the glue differs. The site uses Flask pages; the standalone build uses `templates/standalone.html` (a single page whose screens switch in place, so the music never stops) and `static/standalone/standalone.js`.
+Both versions share the same game code: `engine.js` (board and rules), `solver.js` and `hints.js` (hints), `audio.js` (music and sound), `editor.js`, `soundmenu.js`, `story.js` (cutscenes and the map, with its words from `story.py`), the sprites and `style.css`, plus the shared editor and sound-menu markup in `templates/_editor.html` and `templates/_sound_menu.html`. A fix to any of them lands in both versions the next time you export. Only the glue differs. The site uses Flask pages; the standalone build uses `templates/standalone.html` (a single page whose screens switch in place, so the music never stops) and `static/standalone/standalone.js`.
 
 **Publishing it online:** the playable standalone version lives in a separate repo, [JackG-CIT/BlockedV2](https://github.com/JackG-CIT/BlockedV2), which GitHub Pages serves at **https://jackg-cit.github.io/BlockedV2/**. To update it, run `.venv\Scripts\python tools\publish_online.py`. That rebuilds the standalone game, replaces that repo's files with the build, and pushes, and Pages republishes about a minute later. This repo (JackG-CIT/Blocked) holds the source.
 
@@ -95,9 +110,9 @@ Each chapter plays as one journey through the ship. Every room is still its own 
 2. The screen fades to dark.
 3. The next room fades in with the pirate stepping in from the nearest edge.
 
-**Space** skips the wait, and **R** cancels it so you can stay and replay the room. The fifth (boss) room of each chapter, the last room of the voyage, and any cleared room replayed from the home page show the full "Treasure found!" popup. In that popup, **Space** (or Enter) goes on to the next room, and **Back to the chapter** returns to the home page. Players who prefer the popup every time can untick **Walk straight on to the next room** under the board. That choice is saved in the browser.
+**Space** skips the wait, and **R** cancels it so you can stay and replay the room. The last (boss) room of each chapter, every level of the finale and Expert Waters, and any cleared room replayed from the home page show the full "Treasure found!" popup. In that popup, **Space** (or Enter) goes on to the next room, and **Back to the chapter** returns to the home page. Players who prefer the popup every time can untick **Walk straight on to the next room** under the board. That choice is saved in the browser.
 
-Rooms 1 to 4 of a chapter end at a **door** (when the exit tile is in the outer wall) or a **trapdoor** (when it's inside the room). Both pulse with a gold glow. The treasure chest is saved for each chapter's last room. It's the same Treasure tile in the editor, and the game picks the picture from the room's place in the chapter.
+Every room but a chapter's last ends at a **door** (when the exit tile is in the outer wall) or a **trapdoor** (when it's inside the room). Both pulse with a gold glow. The treasure chest is saved for each chapter's last room. It's the same Treasure tile in the editor, and the game picks the picture from the room's place in the chapter.
 
 Leaving mid-chapter is fine: the home page's **Set sail** button picks up at the first room you haven't cleared.
 
@@ -143,12 +158,14 @@ Pages ask for a **slot**, and the `PLAYLIST` near the top of the music section i
 | Slot | Where | Track |
 | --- | --- | --- |
 | `lobby` | Title screen and menus | `set-sail` |
-| `chapter1` ... `chapter6` | The levels of each chapter | `sea-legs`, `pressure`, `locks-keys`, `gunpowder`, `crossfire`, `davy-jones` |
-| `boss1` ... `boss6` | The hardest (5th) level of each chapter | `sea-legs-boss` ... `davy-jones-boss` |
-| `finale` | The voyage's final grand level(s) | `boss-storm` (Eye of the Storm) |
+| `chapter1` ... `chapter6` | The levels of chapters 1-6 | `sea-legs`, `pressure`, `locks-keys`, `crossfire` (The Squeeze), `gunpowder`, `davy-jones` |
+| `boss1` ... `boss6` | The last level of chapters 1-6 | the matching `-boss` tracks |
+| `finale` | The Black Queen (the deck battle) | `boss-storm` (Eye of the Storm) |
+| `kraken` | The Kraken | `boss-kraken` (Kraken Rising) |
+| `expert` | Expert Waters | `boss-storm-v2` (Eye of the Storm II) |
 | `milestone` | A big milestone (not used yet) | `milestone` |
 
-Eye of the Storm II (`boss-storm-v2`) and Kraken Rising aren't in a slot. Try them in one with "Try a track in a slot" on **/sounds**. Older names still work: `boss` and `deep` mean `finale`, and `voyage` means `chapter1`.
+Try any track in any slot with "Try a track in a slot" on **/sounds**. Older names still work: `boss` and `deep` mean `finale`, and `voyage` means `chapter1`.
 
 Songs change on a bar line with a crossfade. Between pages, the music fades out, then either picks up where it left off (same track, even if it's in a different slot) or plays a short cymbal-swell bridge into the new one. Pages can pass the room number, but the music ignores it: a chapter's track simply keeps playing from room to room.
 
@@ -256,7 +273,7 @@ Click **Build** in the top bar. The editor has tiles on the left, the board in t
 
 ### Exactly how the mechanics work
 
-These are the original rules, plus the gate fixes and the squeeze. If you ever change them, change `static/js/engine.js`, `static/js/solver.js` and `solver.py` together:
+These are the original rules, plus the gate fixes and the squeeze. If you ever change them, change `static/js/engine.js`, `static/js/solver.js` and `solver.py` together (and `tools/fast.py` and `tools/jsolve/Solver.java` for the design tools):
 - The pirate moves one tile per key press (arrows or WASD; R restarts). Walls, closed gates, cannons and the board edge block movement.
 - Walking into a crate pushes it, unless something is behind it: a wall, gate, crate, cannon or the edge.
 - **Pressure plate:** while the pirate or a crate stands on it, its gate is open. Otherwise the gate is shut. (A plate linked to a cannon does nothing.)
@@ -270,6 +287,8 @@ These are the original rules, plus the gate fixes and the squeeze. If you ever c
   - **Several fuses lit by one move** fire one after another, each shot waiting for the one before to land.
   - **Walking into the line of fire** gets the pirate hit, and the level restarts.
   - **The solvers** (`solver.py`, `solver.js` and the tools) treat a shot the same way, tile by tile, and assume you wait for it to land. Waiting is always allowed, so every solution they find works in the game. Tricks that need you to move mid-flight are possible in play but invisible to the solver (hints, par, the level checks). A crate parked on a fuse keeps that cannon firing after every move, so any crate that lands in front of it is shot straight away.
+- **The kraken and the enemy hull** (`kraken` and `hull` tiles) block like walls. Every crate shot into one costs that monster one health instead of smashing the square. When its health runs out, all of its squares vanish at once: the kraken sinks back into the deep and the enemy ship goes down. Each kind shares one health pool across all its squares (the tile's `aX` holds it; in `seed_levels.py` it's `'health': {'kraken': 5}`). A health bar shows above the board. In the editor, paint Kraken or Enemy hull, and click a painted square again to raise its health. `tools/fast.py` and `tools/jsolve/Solver.java` have the rule too (the evolver doesn't).
+- **Big boards scroll:** a board that would need tiles smaller than 26 px to fit gets 30 px tiles inside a window that follows the pirate (`fitBoard`/`follow` in `engine.js`). Levels can now be up to 48 by 48.
 - **Starting positions:** a crate or the pirate can start on top of a plate or fuse. In the editor, paint a crate (or the pirate) onto a plate or fuse. Erasing takes the top piece off first. A crate resting on a plate is drawn slightly see-through so you can tell the plate is held.
 - Reaching a treasure chest wins.
 

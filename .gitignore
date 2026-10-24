@@ -15,3 +15,7 @@ tools/evo_*/
 tools/refine_seeds*.txt
 tools/tests/enginetest/*cases.json
 tools/jsolve/refine/
+
+# Story-bot screenshots and test databases
+/*.png
+story_test.db

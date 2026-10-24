@@ -15,6 +15,18 @@ from collections import deque
 
 DIRS = {'U': (0, -1), 'D': (0, 1), 'L': (-1, 0), 'R': (1, 0)}
 CANNON_DIRS = {'up': (0, -1), 'down': (0, 1), 'left': (-1, 0), 'right': (1, 0)}
+# Monsters: the kraken and an enemy ship's hull. Their squares block like walls.
+# Every crate shot into one costs that monster one health (the crate is gone), and
+# when its health runs out all of its squares vanish. Each kind shares one health
+# pool, set by its tiles' aX (the largest one counts; DEFAULT_HEALTH if unset).
+MONSTERS = ('kraken', 'hull')
+DEFAULT_HEALTH = 3
+
+
+def health_token(kind, k):
+    """Health is kept in the state's walls as off-board squares (-1-kind, -k), k = 1..health,
+    so states stay (player, boxes, walls) and a monster's health is part of the state."""
+    return (-1 - kind, -k)
 
 
 class Level:
@@ -23,6 +35,8 @@ class Level:
         self.cannons, self.exits = {}, set()
         self.plates, self.fuses = [], []          # [(pos, target or None)] in board (row) order
         walls, boxes, player = set(), set(), None
+        self.monster_cells = [set() for _ in MONSTERS]    # per kind: its squares
+        health = [0] * len(MONSTERS)
         for t in sorted(tiles, key=lambda t: (t['y'], t['x'])):
             pos = (t['x'], t['y'])
             kind = t['type'].lower()
@@ -41,6 +55,15 @@ class Level:
                 self.plates.append((pos, target))
             elif kind == 'fuse':
                 self.fuses.append((pos, target))
+            elif kind in MONSTERS:
+                m = MONSTERS.index(kind)
+                self.monster_cells[m].add(pos)
+                health[m] = max(health[m], t.get('aX') or DEFAULT_HEALTH)
+        self.monster_at = {pos: m for m, cells in enumerate(self.monster_cells) for pos in cells}
+        for m, cells in enumerate(self.monster_cells):
+            if cells:
+                walls |= cells
+                walls |= {health_token(m, k) for k in range(1, health[m] + 1)}
         self.player = player
         # Plate targets act as gates (unless they're cannons, which plates ignore).
         self.gates = {t for _, t in self.plates if t is not None and self.inside(t) and t not in self.cannons}
@@ -67,6 +90,20 @@ class Level:
                     if self.inside(p) and p not in walls and p not in boxes and p not in self.cannons and p != player:
                         return p
         return None
+
+    def health(self, walls, m):
+        """How much health monster kind m has left in this state."""
+        k = 0
+        while health_token(m, k + 1) in walls:
+            k += 1
+        return k
+
+    def hit_monster(self, m, walls):
+        """A crate hit monster kind m: one less health; at none, its squares vanish (mutates walls)."""
+        left = self.health(walls, m)
+        walls.discard(health_token(m, left))
+        if left <= 1:
+            walls -= self.monster_cells[m]
 
     def settle_plates(self, player, boxes, walls):
         """checkPressurePlates: open or shut every gate (mutates boxes/walls).
@@ -116,7 +153,9 @@ class Level:
                 if nxt == player:  # a cannonball crate flattens the pirate
                     return None
                 if not self.inside(nxt) or nxt in boxes or nxt in walls:
-                    if self.inside(nxt) and nxt in walls and nxt not in self.gates:  # gates eat the crate
+                    if self.inside(nxt) and nxt in self.monster_at and nxt in walls:
+                        self.hit_monster(self.monster_at[nxt], walls)
+                    elif self.inside(nxt) and nxt in walls and nxt not in self.gates:  # gates eat the crate
                         walls.discard(nxt)
                     boxes.discard((x, y))
                     if self.inside(nxt) and nxt in boxes:

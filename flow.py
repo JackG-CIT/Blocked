@@ -72,13 +72,16 @@ def transform(width, height, tiles, name):
     return w2, h2, out
 
 
-def check(rooms, chapter_size=5, verify=False, max_states=400_000):
+def check(rooms, layout, verify=False, max_states=400_000):
     """rooms: the voyage in order, as dicts with name, width, height, tiles.
-    Returns a list of problems: {room, next, exit, entrance, fixes}."""
+    layout: its chapters (chapters.layout). Returns a list of problems:
+    {room, next, exit, entrance, fixes}."""
+    import chapters
+    walks = [chapters.walks_on(*chapters.locate(layout, i)) for i in range(len(rooms))]
     problems = []
     for i in range(len(rooms) - 1):
-        if (i + 1) % chapter_size == 0:
-            continue   # the chapter ends here; the next chapter starts fresh
+        if not walks[i]:
+            continue   # the chapter ends here (or its levels stand alone); the next room starts fresh
         a, b = rooms[i], rooms[i + 1]
         out = exit_sides(a['width'], a['height'], a['tiles'])
         into = entrance_sides(b['width'], b['height'], b['tiles'])
@@ -96,7 +99,7 @@ def check(rooms, chapter_size=5, verify=False, max_states=400_000):
                 continue
             fix = {'change': f"{name} '{b['name']}'"}
             # Does the room after still line up once this one is turned?
-            if (i + 2) % chapter_size != 0 and i + 2 < len(rooms):
+            if walks[i + 1] and i + 2 < len(rooms):
                 c = rooms[i + 2]
                 fix['keeps_next'] = bool({OPPOSITE[s] for s in exit_sides(w, h, tiles)}
                                          & entrance_sides(c['width'], c['height'], c['tiles']))

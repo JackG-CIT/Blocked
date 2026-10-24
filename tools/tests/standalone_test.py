@@ -20,6 +20,12 @@ with sync_playwright() as p:
     pg.on('console', lambda m: errs.append('console: ' + m.text) if m.type == 'error' else None)
     ctx.on('request', lambda r: None if r.url.startswith(BASE) or r.url.startswith('data:') else outside.append(r.url))
     pg.goto(BASE + 'index.html')
+    # The intro cutscene is tested in story_test.py; skip it here so it doesn't cover the title screen.
+    pg.evaluate("""() => { const seen = {intro: 1};   // and every chapter's title card
+        BLOCKED_DATA.chapters.forEach(t => seen['card:' + t] = 1);
+        Object.keys(BLOCKED_DATA.story.cutscenes).forEach(id => seen[id] = 1);
+        localStorage.setItem('blocked-sa-story-seen', JSON.stringify(seen)); }""")
+    pg.reload()
     time.sleep(1)
     levels = pg.evaluate('BLOCKED_DATA.levels.map(l => ({id: l.id, name: l.name, room: l.room, solution: l.solution, mech: l.mechanics}))')
     print('levels:', len(levels), '| title button:', pg.inner_text('#continueBtn'))

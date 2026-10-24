@@ -1,5 +1,5 @@
 {# The speaker button and its volume panel (soundmenu.js runs it). Shared with the standalone build. #}
-{% macro sound_menu(test_link=None) %}
+{% macro sound_menu(test_link=None, test_screen=None) %}
 <div class="sound-menu">
     <button class="navlink sound-toggle" id="soundToggle" type="button" aria-expanded="false" aria-controls="soundPanel" title="Sound (M to mute)">
         <span class="speaker" aria-hidden="true"></span><span class="sr-only">Sound settings</span>
@@ -12,6 +12,7 @@
         <label class="check"><input type="checkbox" id="muteAll"> Mute everything <kbd>M</kbd></label>
         <label class="check" title="Off: the shorter chapter loops instead of the long tracks that build up room by room"><input type="checkbox" id="longMusic"> Long chapter music</label>
         {% if test_link %}<a href="{{ test_link }}">Sound test</a>{% endif %}
+        {% if test_screen %}<a href="#" data-go="{{ test_screen }}">Sound test</a>{% endif %}
     </div>
 </div>
 {% endmacro %}

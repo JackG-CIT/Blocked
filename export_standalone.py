@@ -15,16 +15,17 @@ import re
 import shutil
 import zipfile
 
+import chapters
 import seed_levels
+import story   # the story text: room lines, chapter intros, cutscene words
 from seed_levels import LEVELS, parse
 from solver import Level, solve
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DIST = os.path.join(ROOT, 'dist')
 OUT = os.path.join(DIST, 'standalone')
-CHAPTER_SIZE = 5
 
-SHARED_JS = ['engine.js', 'solver.js', 'hints.js', 'audio.js', 'editor.js', 'soundmenu.js']
+SHARED_JS = ['engine.js', 'solver.js', 'hints.js', 'audio.js', 'editor.js', 'soundmenu.js', 'soundtest.js', 'story.js']
 STANDALONE_JS = ['standalone.js', 'portal.js']
 
 
@@ -41,6 +42,7 @@ def mechanics(width, height, tiles, solution):
         found.append('plates')
     if 'fuse' in kinds:
         found.append('cannons')
+    found += [k for k in ('hull', 'kraken') if k in kinds]
     level = Level(width, height, tiles)
     fuses = {f for f, _ in level.fuses}
     state = level.start
@@ -70,27 +72,33 @@ def mechanics(width, height, tiles, solution):
 
 def level_data():
     out = []
+    layout = chapters.layout(len(LEVELS))
     for i, spec in enumerate(LEVELS):
         width, height, tiles = parse(spec)
         solution = spec.get('solution')
         if not solution:
             result = solve(Level(width, height, tiles), max_states=2_000_000)
             solution = result.get('solution')
-        room = i % CHAPTER_SIZE + 1
+        chapter, room = chapters.locate(layout, i)
+        mid = chapters.walks_on(chapter, room)
         out.append({
             'id': slug(spec['name']),
             'name': spec['name'],
             'notes': spec.get('notes', ''),
-            'chapter': i // CHAPTER_SIZE + 1,
+            'chapter': chapter['number'],
             'room': room,
+            'size': chapter['size'],            # rooms in this chapter
+            'mid': mid,                         # ends at a door into the next room
+            'test': chapter['rooms'] and chapters.is_boss(chapter, room) and chapter['size'] > 1,
+            'music': chapters.music_slot(chapter, room),
             'width': width,
             'height': height,
             'tiles': tiles,
             'difficulty': spec.get('difficulty'),
             'par': spec.get('par'),
-            'transition': spec.get('transition'),
+            'transition': story.transition(spec['name'], spec.get('transition')),   # story.py's line, else the level's
             'solution': solution,
-            'mechanics': mechanics(width, height, tiles, solution) + (['doors'] if room < CHAPTER_SIZE else []),
+            'mechanics': mechanics(width, height, tiles, solution) + (['doors'] if mid else []),
         })
     return out
 
@@ -115,9 +123,10 @@ def export(app, limits):
     for name in os.listdir(os.path.join(static, 'fonts')):
         shutil.copy(os.path.join(static, 'fonts', name), os.path.join(OUT, 'fonts', name))
 
-    chapters = getattr(seed_levels, 'CHAPTERS', [])
-    chapters = chapters + [f'Chapter {n + 1}' for n in range(len(chapters), -(-len(LEVELS) // CHAPTER_SIZE))]
-    data = {'chapters': chapters, 'chapterSize': CHAPTER_SIZE, 'limits': limits, 'levels': level_data()}
+    layout = chapters.layout(len(LEVELS))
+    titles = [ch['title'] for ch in layout]
+    data = {'chapters': titles, 'ending': chapters.ending_index(layout), 'limits': limits, 'levels': level_data(),
+            'story': story.payload(titles)}
     with open(os.path.join(OUT, 'js', 'levels.js'), 'w', encoding='utf-8') as f:
         f.write('// The voyage, written by `flask --app app export-standalone` from seed_levels.py.\n')
         f.write('window.BLOCKED_DATA = ' + json.dumps(data, separators=(',', ':')) + ';\n')

@@ -52,6 +52,7 @@
             <a class="btn big" href="{{ url_for('register') }}">Join the crew</a>
             <a class="btn big wood" href="{{ url_for('login') }}">Log in</a>
         </div>
+        <button class="btn small sea" type="button" data-story-scene="intro">Watch the intro</button>
     </section>
 
     <section class="how">
@@ -99,14 +100,26 @@
     <div class="section-head">
         <h2>The Voyage</h2>
         <p>Clear each level to unlock the next.</p>
+        {% if voyage %}
+            <div class="view-toggle" role="group" aria-label="Show the voyage as">
+                <button type="button" data-view="map">Map</button>
+                <button type="button" data-view="list">List</button>
+            </div>
+        {% endif %}
     </div>
     {% if voyage %}
+        <div id="voyageMap" class="hidden">
+            <div class="map-tools" id="sceneButtons"></div>
+            <div class="voyage-map" id="voyageMapBody"></div>
+        </div>
+        <div id="voyageList">
         {% for number, title, start, levels in chapters %}
             <h3 class="chapter-title" id="chapter-{{ number }}">Chapter {{ number }}: {{ title }}</h3>
             <div class="level-grid">
-                {% for lv in levels %}{{ level_card(lv, start + loop.index, lv.id not in open_ids, 'door' if loop.index < 5 else 'chest') }}{% endfor %}
+                {% for lv in levels %}{{ level_card(lv, start + loop.index, lv.id not in open_ids, 'door' if loop.index < levels|length and title not in loose_chapters else 'chest') }}{% endfor %}
             </div>
         {% endfor %}
+        </div>
     {% else %}
         <div class="empty">No voyage levels yet.</div>
     {% endif %}
@@ -138,6 +151,30 @@
 {% endblock %}
 
 {% block scripts %}
+<script type="application/json" id="storyData">{{ {'story': story, 'map': voyage_map or []}|tojson }}</script>
+<script src="{{ asset('js/story.js') }}"></script>
+<script>
+    // The story: the intro plays the first time anyone opens the site, and the
+    // voyage shows as a map (or the old list, if the player picks that).
+    (function () {
+        const data = JSON.parse(document.getElementById("storyData").textContent);
+        BlockedStory.init({ imgBase: "{{ url_for('static', filename='img/') }}", story: data.story, seenKey: "blocked-story-seen" });
+        const map = document.getElementById("voyageMap");
+        if (map) {
+            BlockedStory.renderMap(document.getElementById("voyageMapBody"), data.map);
+            BlockedStory.sceneButtons(document.getElementById("sceneButtons"));
+            BlockedStory.viewSwitch({
+                buttons: [...document.querySelectorAll(".view-toggle [data-view]")],
+                map, list: document.getElementById("voyageList"), key: "blocked-voyage-view",
+            });
+            // "Back to the chapter" links land on #chapter-N: find that chapter on the map too.
+            const m = location.hash.match(/^#chapter-(\d+)$/);
+            const deck = m && !map.classList.contains("hidden") && document.getElementById("map-chapter-" + m[1]);
+            if (deck) deck.scrollIntoView({ block: "center" });
+        }
+        BlockedStory.playOnce("intro");
+    })();
+</script>
 {% if not guest %}
 <script>
     // Draw a little picture of each level on its card.

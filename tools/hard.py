@@ -44,7 +44,7 @@ def read_candidates(folder):
                     solution = line.split()[1] if len(line.split()) > 1 else ''
                 else:
                     rows.append(line)
-            score = float(re.search(r'score=([\d.]+)', head).group(1))
+            score = float(re.search(r'score=(-?[\d.]+)', head).group(1))
             style = re.search(r'style=(\w+)', head).group(1)
             out.append({'rows': rows, 'links': links, 'solution': solution, 'evo_score': score, 'style': style})
     return out
