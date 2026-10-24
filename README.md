@@ -141,7 +141,7 @@ Every track is original, written for Blocked in a pirate style: minor keys, gall
 | `gunpowder` | Gunpowder | Bold and martial in A minor: marching horns, snare rolls, taiko |
 | `crossfire` | Crossfire | Urgent and stormy in G minor (6/8): rushing strings, racing fiddle |
 | `davy-jones` | Davy Jones | Epic and dark-majestic in C minor: low horns, tolling bell, taiko |
-| `sea-legs-boss` ... `davy-jones-boss` | (chapter) (boss) | Each chapter's tune, faster and grander, for its hardest level |
+| `sea-legs-boss` ... `davy-jones-boss` | (chapter) (boss) | Each chapter's tune, a little faster and more intense, for its hardest level |
 | `boss-storm` | Eye of the Storm | Fast and driving in E minor: pounding taiko, horn theme, fiddle charge |
 | `boss-storm-v2` | Eye of the Storm II | A bigger boss version: taiko build, choir, low horn ostinato, soaring horns |
 | `boss-kraken` | Kraken Rising | Heavy and epic in D phrygian (6/8): horn riff, huge taiko and anvil |
@@ -169,7 +169,7 @@ Try any track in any slot with "Try a track in a slot" on **/sounds**. Older nam
 
 Songs change on a bar line with a crossfade. Between pages, the music fades out, then either picks up where it left off (same track, even if it's in a different slot) or plays a short cymbal-swell bridge into the new one. Pages can pass the room number, but the music ignores it: a chapter's track simply keeps playing from room to room.
 
-- The speaker button in the top bar has music and effects volume, mute, and the "Long chapter music" switch. **M** mutes from anywhere.
+- The speaker button in the top bar has music and effects volume, mute, the "Long chapter music" switch, and **Story cutscenes**: untick it and no cutscene or chapter title card plays by itself (the "Watch again" buttons still play them). **M** mutes from anywhere.
 - **/sounds** is the sound test page. It plays every track (grouped into Title, Chapters, Short chapter loops, Chapter boss levels, Boss and finale, and Extras) and shows which slot each one fills. It shows each long track's cycle with buttons to jump to its variations, has a stop button, and plays every sound effect.
 - To use real recordings instead, put a file named after the slot (`lobby.mp3`, `chapter1.mp3`, `boss1.mp3`, `finale.mp3` ...) in `static/audio/`. It replaces the generated music for that slot automatically. Only use files you have the rights to, especially if you submit the game somewhere like Cool Math Games.
 
@@ -190,7 +190,7 @@ A long chapter track is its short 16-bar tune played over and over by the full b
 | Crossfire | 25 s | same order | 3:22 |
 | Davy Jones | 48 s | normal, change-up, normal, grand, normal, breakdown | 4:48 |
 
-The chapter boss tracks work the same way. They use the chapter's loop at a faster tempo with the full band, horns on the tune, driving taiko and rushing strings, and every third time round a second fiddle joins in.
+The chapter boss tracks work the same way. They use the chapter's loop only a little faster (about 5%), made more intense instead: the full band, horns on the tune, driving taiko with a crash every four bars, rushing strings and a low choir. Every third time round a second fiddle joins in.
 
 ### How to tweak the music
 

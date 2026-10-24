@@ -252,7 +252,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function theEnd() {
         leaving = true;
         winModal.classList.add("hidden");
-        saving.then(() => BlockedStory.play("ending")).then(() => {
+        saving.then(() => BlockedStory.auto("ending")).then(() => {
             $("curtain").classList.add("closing");
             return wait(450);
         }).then(() => BlockedSound.go(data.homeUrl));

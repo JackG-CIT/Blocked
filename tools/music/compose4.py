@@ -1,4 +1,4 @@
-"""Chapter boss tracks (faster, grander versions of each chapter loop) and Eye of the Storm II.
+"""Chapter boss tracks (more intense versions of each chapter loop, only a little faster) and Eye of the Storm II.
 Inserts/replaces them in audio.js."""
 import re, sys, pathlib
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -6,7 +6,8 @@ from compose import fill
 import compose3
 from compose3 import P, SPECS
 
-BOSS_BPM = {"sea-legs": 86, "pressure": 138, "locks-keys": 92, "gunpowder": 128, "crossfire": 88, "davy-jones": 96}
+# About 5% faster than the chapter track (it used to be 12-20%): the intensity comes from the band, not the tempo.
+BOSS_BPM = {"sea-legs": 76, "pressure": 130, "locks-keys": 84, "gunpowder": 118, "crossfire": 80, "davy-jones": 84}
 BOSS_VOL = {"sea-legs": 0.75, "pressure": 0.78, "locks-keys": 0.62, "gunpowder": 0.66, "crossfire": 0.63, "davy-jones": 0.7}
 
 
@@ -37,9 +38,11 @@ def chapter_boss(tid):
         first = "B+C:2 r:2 B:2 r:2 B:2 B:2 S:2 r:2"
         fillb = "B:2 B:2 B:2 B:2 S:1 S:1 S:1 S:1 S:1 S:1 S:1 S:1"
         ost = "{o}:1 {o}:1 {p}:1 {o}:1 {o}:1 {o}:1 {p}:1 {o}:1 {o}:1 {o}:1 {p}:1 {o}:1 {h}:1 {o}:1 {p}:1 {o}:1"
-    drums2 = [first] + [drive] * 7 + [first] + [drive] * 6 + [fillb]
+    # A crash every four bars and a fill every eight, and a low choir holding the chords.
+    drums2 = ([first, drive, drive, drive, first, drive, drive, fillb]) * 2
     boss = {"lead": grand["lead"], "brass2": grand["brass2"], "drums2": drums2,
-            "ostinato2": [fill(ost, c) for c in chords]}
+            "ostinato2": [fill(ost, c) for c in chords],
+            "choir": [fill("{x}:%d" % BS, c) for c in chords]}
     if "sub" in grand:
         boss["sub"] = grand["sub"]
     boss2 = dict(boss)
@@ -47,12 +50,13 @@ def chapter_boss(tid):
     loop_secs = 16 * BS * 60 / BOSS_BPM[tid] / meta["spb"]
     cycle = ["boss", "boss", "boss2"]
     L = []
-    L.append('        // Chapter %s boss level: "%s" sped up (%d -> %d bpm) with the full band, horns on the tune, driving taiko and rushing strings.'
+    L.append('        // Chapter %s boss level: "%s" a little faster (%d -> %d bpm) and more intense: the full band, horns on the tune,'
              % (list(SPECS).index(tid) + 1, spec["title"], meta["bpm"], BOSS_BPM[tid]))
+    L.append('        // driving taiko with a crash every four bars, rushing strings and a low choir.')
     L.append("        // One loop is %d s; every third time round a second fiddle joins in." % loop_secs)
     L.append('        "%s-boss": {' % tid)
     L.append('            title: "%s (boss)", group: "chapter-boss", volume: %s,' % (spec["title"], BOSS_VOL[tid]))
-    L.append('            mood: "Faster, grander %s for the chapter\'s hardest level",' % spec["title"])
+    L.append('            mood: "A more intense %s for the chapter\'s hardest level",' % spec["title"])
     L.append("            bpm: %d, stepsPerBeat: %d, barSteps: %d," % (BOSS_BPM[tid], meta["spb"], BS))
     L.append('            loop: "%s-short",' % tid)
     L.append("            cycle: [%s]," % ", ".join('"%s"' % c for c in cycle))
