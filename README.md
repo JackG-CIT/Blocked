@@ -58,6 +58,8 @@ What the standalone version has:
 
 Both versions share the same game code: `engine.js` (board and rules), `solver.js` and `hints.js` (hints), `audio.js` (music and sound), `editor.js`, `soundmenu.js`, the sprites and `style.css`, plus the shared editor and sound-menu markup in `templates/_editor.html` and `templates/_sound_menu.html`. A fix to any of them lands in both versions the next time you export. Only the glue differs. The site uses Flask pages; the standalone build uses `templates/standalone.html` (a single page whose screens switch in place, so the music never stops) and `static/standalone/standalone.js`.
 
+**Publishing it online:** the playable standalone version lives in a separate repo, [JackG-CIT/BlockedV2](https://github.com/JackG-CIT/BlockedV2), which GitHub Pages serves at **https://jackg-cit.github.io/BlockedV2/**. To update it, run `.venv\Scripts\python tools\publish_online.py`. That rebuilds the standalone game, replaces that repo's files with the build, and pushes, and Pages republishes about a minute later. This repo (JackG-CIT/Blocked) holds the source.
+
 **Portal hooks:** `static/standalone/portal.js` has placeholder (do-nothing) functions the game already calls at the right moments: `gameStart`, `levelStart`, `levelComplete`, `levelRestart`, and `breakTime` (between chapters, a natural spot for a portal's ad break). It also has `pauseGame`/`resumeGame` for a portal's SDK to call. To wire up a portal, fill these in and add the portal's script tag to `templates/standalone.html`.
 
 ## The database
