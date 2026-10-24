@@ -60,9 +60,12 @@ with sync_playwright() as p:
     big = max(range(len(levels)), key=lambda i: len(levels[i]['solution'] or ''))
     pg.evaluate("""() => { const p = {}; BLOCKED_DATA.levels.forEach(l => p[l.id] = {count: 1, best_ms: 1000, best_moves: 1});
                      localStorage.setItem('blocked-sa-progress', JSON.stringify(p));
-                     localStorage.setItem('blocked-sa-seen', JSON.stringify({controls:1,plates:1,squeeze:1,cannons:1,loaded:1,doors:1})); }""")
+                     localStorage.setItem('blocked-sa-seen', JSON.stringify({controls:1,plates:1,squeeze:1,cannons:1,loaded:1,doors:1,hull:1,kraken:1})); }""")
     pg.reload(); time.sleep(1)
     pg.evaluate(f'BlockedStandalone.playVoyage({big}, {{}})'); time.sleep(1)
+    for _ in range(10):   # any story scene or first-time popup still to close
+        if not (pg.is_visible('#infoModal') or pg.locator('.cutscene, .chapter-card').count()): break
+        pg.keyboard.press('Escape'); time.sleep(0.4)
     pg.keyboard.press('h'); time.sleep(4)
     print(f"hint on biggest level ({levels[big]['name']}, {len(levels[big]['solution'])}-move route):", pg.inner_text('#hintText'))
     pg.keyboard.press('h'); time.sleep(1)
