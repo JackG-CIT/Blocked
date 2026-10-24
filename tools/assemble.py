@@ -162,6 +162,7 @@ Map key:  # wall   P pirate (start)   B crate   E treasure (exit)
           K kraken   H enemy hull: blocks like a wall; every crate shot into it
             costs it one health, and at 0 all of its squares vanish
             ('health' sets how much each has: {'kraken': 4, 'hull': 3})
+          ~ water: blocks the pirate and crates, but shots fly over it
           D marks a gate (an empty tile a plate opens). It's only a reminder;
             the link itself is set in "links" as (plate or fuse) -> target.
 """

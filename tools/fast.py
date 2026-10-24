@@ -20,6 +20,7 @@ class Fast:
         player = None
         self.monster_cells = [0] * len(MONSTERS)
         self.monster_at = {}
+        self.water = 0          # water: blocks like a wall, but shots fly over it
         health = [0] * len(MONSTERS)
         for t in sorted(tiles, key=lambda t: (t['y'], t['x'])):
             i = idx(t['x'], t['y'])
@@ -32,6 +33,9 @@ class Fast:
             elif k == 'cannon': self.cannons[i] = CDIR.get(t.get('direction') or 'up', (0, -1))
             elif k == 'pressureplate': plates.append((i, tgt))
             elif k == 'fuse': fuses.append((i, tgt))
+            elif k == 'water':
+                self.water |= 1 << i
+                self.walls0 |= 1 << i
             elif k in MONSTERS:
                 m = MONSTERS.index(k)
                 self.monster_cells[m] |= 1 << i
@@ -134,7 +138,7 @@ class Fast:
                 n = self.step_cell(cur, dx, dy)
                 if n == p:          # the shot flattens the pirate
                     return None
-                if n < 0 or boxes >> n & 1 or walls >> n & 1:
+                if n < 0 or boxes >> n & 1 or (walls >> n & 1 and not self.water >> n & 1):
                     if n >= 0 and n in self.monster_at and walls >> n & 1:
                         walls = self.hit_monster(self.monster_at[n], walls)
                     elif n >= 0 and walls >> n & 1 and not self.gates >> n & 1:

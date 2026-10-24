@@ -24,6 +24,7 @@ Map key:  # wall   P pirate (start)   B crate   E treasure (exit)
           K kraken   H enemy hull: blocks like a wall; every crate shot into it
             costs it one health, and at 0 all of its squares vanish
             ('health' sets how much each has: {'kraken': 4, 'hull': 3})
+          ~ water: blocks the pirate and crates, but shots fly over it
           D marks a gate (an empty tile a plate opens). It's only a reminder;
             the link itself is set in "links" as (plate or fuse) -> target.
 """
@@ -603,7 +604,9 @@ LEVELS = [
         'map': [
             '#############E############',
             '#HHHHHHHHHHHHHHHHHHHHHHHH#',
-            '####.########.########.###',
+            '#HHHHHHHHHHHHHHHHHHHHHHHH#',
+            '#~~~~~~~~~~~~~~~~~.~~~~~~#',
+            '#~~~~~~~~~~~~~~~~~.~~~~~~#',
             '#.F....._..F............F#',
             '#........................#',
             '#.##^#.######^#..##.##^#.#',
@@ -614,9 +617,9 @@ LEVELS = [
             '#.....#.#........#.......#',
             '##########################',
         ],
-        'links': {(2, 3): (4, 5), (11, 3): (13, 5), (24, 3): (22, 5), (2, 7): (6, 5), (8, 3): (16, 7), (20, 7): (19, 5)},
+        'links': {(2, 5): (4, 7), (11, 5): (13, 7), (24, 5): (22, 7), (2, 9): (6, 7), (8, 5): (16, 9), (20, 9): (19, 7)},
         'health': {'hull': 5},
-        'solution': 'DLLLUULUURRRRLLLLDDDDRRRURRRUULUUULURRDRRRRRRRRRRRRRRRRRDDDDDDLLLLLUULURDDDRRRRRUUUUUULLLLLLLLLLLLLLLLLLLLLLLDDDDDDRRRURRUUUUDLLLLLUURRURRRRDLLULLLDRRRRRRRRRRRRRRRRRRRRRRDDLLLLRRRDRDDDLLUULLLUUUDRRRRRUULULLLLLDRRRURRRDLLLLLLLLLLLLLLLLLLLLLLLDDDDRRRRDRUUUUDLLLLLUURRURRRRDLLULLLDRRRRRRRRRRRRRRRRRRRRRRDDDDDDLLLURULLRDDLLUUUUUDRRRRRUULULLLLLDRRRURRRDDDDDLLLLRDDLLUUUUUDRRRRRUULULLLLLDRRRURRRDLULUULLLLLLLLLU',
+        'solution': 'DLLLUULUURRRRLLLLDDDDRRRURRRUULUUULURRDRRRRRRRRRRRRRRRRRDDDDDDLLLLLUULURDDDRRRRRUUUUUULLLLLLLLLLLLLLLLLLLLLLLDDDDDDRRRURRUUUUDLLLLLUURRURRRRDLLULLLDRRRRRRRRRRRRRRRRRRRRRRDDLLLLRRRDRDDDLLUULLLUUUDRRRRRUULULLLLLDRRRURRRDLLLLLLLLLLLLLLLLLLLLLLLDDDDRRRRDRUUUUDLLLLLUURRURRRRDLLULLLDRRRRRRRRRRRRRRRRRRRRRRDDDDDDLLLURULLRDDLLUUUUUDRRRRRUULULLLLLDRRRURRRDDDDDLLLLRDDLLUUUUUDRRRRRUULULLLLLDRRRURRRDLULLLLLUUUULLLLLU',
     },
     # 33
     {
@@ -956,7 +959,7 @@ BONUS_CHAPTERS = ['Expert Waters']
 
 
 SYMBOLS = {'#': 'wall', 'P': 'player', 'B': 'box', 'E': 'exit', '_': 'pressureplate', 'F': 'fuse',
-           'K': 'kraken', 'H': 'hull'}
+           'K': 'kraken', 'H': 'hull', '~': 'water'}
 CANNONS = {'^': 'up', 'v': 'down', '<': 'left', '>': 'right'}
 STACKED = {'=': ('pressureplate', 'box')}   # a crate that starts on a plate
 

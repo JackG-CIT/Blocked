@@ -25,6 +25,8 @@ def tiles_for_state(W, H, tiles, F, state):
             m = F.monster_at[i]
             left = bin((walls >> (F.token0 + 64 * m)) & ((1 << 64) - 1)).count('1')
             out.append({'type': fast.MONSTERS[m], 'x': x, 'y': y, 'direction': None, 'aX': left, 'aY': None})
+        elif F.water >> i & 1:
+            out.append({'type': 'water', 'x': x, 'y': y, 'direction': None, 'aX': None, 'aY': None})
         elif walls >> i & 1 and not F.gates >> i & 1:
             out.append({'type': 'wall', 'x': x, 'y': y, 'direction': None, 'aX': None, 'aY': None})
         if boxes >> i & 1:
@@ -118,6 +120,7 @@ def render(rows, links, moves, health=None):
             if i == p: row += 'P'
             elif boxes >> i & 1: row += '=' if i in plates else 'B'
             elif walls >> i & 1 and i in F.monster_at: row += 'KH'[F.monster_at[i]]
+            elif F.water >> i & 1: row += '~'
             elif walls >> i & 1: row += 'D' if F.gates >> i & 1 else '#'
             elif i in F.cannons: row += {(0, -1): '^', (0, 1): 'v', (-1, 0): '<', (1, 0): '>'}[F.cannons[i]]
             elif i in plates: row += '_'

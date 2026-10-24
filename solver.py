@@ -20,6 +20,7 @@ CANNON_DIRS = {'up': (0, -1), 'down': (0, 1), 'left': (-1, 0), 'right': (1, 0)}
 # when its health runs out all of its squares vanish. Each kind shares one health
 # pool, set by its tiles' aX (the largest one counts; DEFAULT_HEALTH if unset).
 MONSTERS = ('kraken', 'hull')
+# Water blocks the pirate and crates like a wall, but a shot crate flies over it.
 DEFAULT_HEALTH = 3
 
 
@@ -36,6 +37,7 @@ class Level:
         self.plates, self.fuses = [], []          # [(pos, target or None)] in board (row) order
         walls, boxes, player = set(), set(), None
         self.monster_cells = [set() for _ in MONSTERS]    # per kind: its squares
+        self.water = set()
         health = [0] * len(MONSTERS)
         for t in sorted(tiles, key=lambda t: (t['y'], t['x'])):
             pos = (t['x'], t['y'])
@@ -55,6 +57,9 @@ class Level:
                 self.plates.append((pos, target))
             elif kind == 'fuse':
                 self.fuses.append((pos, target))
+            elif kind == 'water':
+                self.water.add(pos)
+                walls.add(pos)
             elif kind in MONSTERS:
                 m = MONSTERS.index(kind)
                 self.monster_cells[m].add(pos)
@@ -152,7 +157,7 @@ class Level:
                 nxt = (x + dx, y + dy)
                 if nxt == player:  # a cannonball crate flattens the pirate
                     return None
-                if not self.inside(nxt) or nxt in boxes or nxt in walls:
+                if not self.inside(nxt) or nxt in boxes or (nxt in walls and nxt not in self.water):
                     if self.inside(nxt) and nxt in self.monster_at and nxt in walls:
                         self.hit_monster(self.monster_at[nxt], walls)
                     elif self.inside(nxt) and nxt in walls and nxt not in self.gates:  # gates eat the crate

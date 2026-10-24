@@ -169,3 +169,36 @@ BROADSIDE = {
     'map': broadside_map(),
     'links': {(2, 2): (9, 4), (13, 1): (11, 6), (23, 1): (21, 4), (24, 7): (26, 4)},
 }
+
+
+def queen3_map():
+    """The Black Queen pulled up alongside: her hull (two rows), two rows of open water,
+    then our deck. Shots fly over the water; a gangplank (18,3)-(18,4) lets you board
+    once she's sunk and her treasure is all that's left."""
+    b = Board(26, 14)
+    D = 2   # everything on our ship sits two rows lower than in queen2_map
+    b.put('E', (13, 0))
+    b.floor(1, 1, 24, 2, 'H')                   # the Black Queen's hull
+    b.floor(1, 3, 24, 4, '~').put('.', (18, 3), (18, 4))   # the water between, and the gangplank
+    b.floor(1, 3 + D, 24, 4 + D)                # our gun deck
+    b.put('^', (4, 5 + D), (13, 5 + D), (22, 5 + D))
+    b.put('F', (2, 3 + D), (11, 3 + D), (24, 3 + D))
+    b.put('_', (8, 3 + D))
+    b.floor(1, 6 + D, 7, 10 + D).put('.', (1, 5 + D), (6, 5 + D)).put('_', (2, 7 + D))
+    b.put('#', (4, 7 + D), (5, 7 + D), (3, 9 + D), (6, 10 + D))
+    b.put('B', (4, 6 + D), (3, 8 + D), (6, 8 + D), (2, 9 + D)).put('P', (5, 9 + D))
+    b.put('.', (15, 5 + D), (16, 5 + D), (15, 6 + D), (16, 6 + D), (16, 7 + D))
+    b.floor(9, 8 + D, 16, 10 + D).put('#', (12, 9 + D))
+    b.put('B', (11, 8 + D), (14, 9 + D))
+    b.floor(18, 6 + D, 24, 10 + D).put('.', (19, 5 + D), (24, 5 + D)).put('_', (20, 7 + D))
+    b.put('#', (21, 7 + D), (22, 7 + D), (20, 9 + D), (23, 9 + D))
+    b.put('B', (22, 6 + D), (19, 8 + D), (21, 9 + D), (23, 8 + D))
+    return b.rows()
+
+
+QUEEN3 = {
+    'name': 'The Black Queen',
+    'map': queen3_map(),
+    'links': {(2, 5): (4, 7), (11, 5): (13, 7), (24, 5): (22, 7), (2, 9): (6, 7), (8, 5): (16, 9), (20, 9): (19, 7)},
+    'health': {'hull': 5},
+}

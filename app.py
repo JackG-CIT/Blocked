@@ -26,7 +26,7 @@ login_manager.login_message_category = 'error'
 bcrypt = Bcrypt(app)
 db.init_app(app)
 
-TILE_TYPES = ('player', 'wall', 'box', 'pressureplate', 'cannon', 'fuse', 'exit', 'kraken', 'hull')
+TILE_TYPES = ('player', 'wall', 'box', 'pressureplate', 'cannon', 'fuse', 'exit', 'kraken', 'hull', 'water')
 MAX_HEALTH = 20   # a kraken's or hull's health (solver.py MONSTERS)
 DIRECTIONS = ('up', 'down', 'left', 'right')
 MIN_SIZE, MAX_SIZE = 3, 48   # big finale boards scroll (engine.js fitBoard)

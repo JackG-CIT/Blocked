@@ -5,7 +5,8 @@
 //
 // A level looks like:
 //   { width, height, tiles: [{ type, x, y, direction, aX, aY }, ...] }
-// type is one of: player, wall, box, pressureplate, cannon, fuse, exit, kraken, hull.
+// type is one of: player, wall, box, pressureplate, cannon, fuse, exit, kraken, hull, water.
+// Water blocks the pirate and crates like a wall, but a shot crate flies over it.
 // Plates and fuses point at the tile they control with aX/aY. A kraken or hull
 // tile keeps its health in aX: all of one kind share one health pool.
 (function (global) {
@@ -45,6 +46,7 @@
                         td.dataset.targetY = t.aY;
                     }
                     if (type === "cannon") td.dataset.direction = t.direction || "up";
+                    if (type === "water") td.classList.add("wall");
                     if (MONSTERS[type]) {
                         td.classList.add("wall");    // blocks like a wall while it lives
                         health[type] = Math.max(health[type] || 0, t.aX || 3);
@@ -94,7 +96,7 @@
             const first = table.querySelector("td." + kind);
             if (!first) return "";
             const max = parseInt(first.dataset.maxHp), hp = monsterHealth(table, kind);
-            const pips = Array.from({ length: max }, (_, k) => `<i class="pip${k < hp ? "" : " lost"}"></i>`).join("");
+            const pips = Array.from({ length: max }, (_, k) => `<i class="pip${k < hp ? "" : " spent"}"></i>`).join("");
             return `<span class="health-bar ${kind}${hp ? "" : " beaten"}"><b>${MONSTERS[kind]}</b>${pips}</span>`;
         }).join("");
         if (!bars) { if (strip) strip.remove(); return; }
@@ -140,6 +142,7 @@
         if (c.contains("pressureplate")) base = weighed ? "plate pressed" : "plate";
         else if (c.contains("fuse")) base = weighed ? "fuse lit" : "fuse";
         else if (c.contains("exit")) base = exitSprite(cell);
+        else if (c.contains("water")) base = "water";
         else if (cell.dataset.door) base = "gate-open";
 
         let obj = "";
@@ -147,7 +150,7 @@
         else if (c.contains("box")) obj = c.contains("pressureplate") ? "crate weighing" : "crate";
         else if (c.contains("kraken") && c.contains("wall")) obj = cell.dataset.eye ? "kraken-eye" : "kraken";
         else if (c.contains("hull") && c.contains("wall")) obj = "hull";
-        else if (c.contains("wall") || c.contains("nopass")) obj = cell.dataset.door ? "gate" : "wall";
+        else if ((c.contains("wall") && !c.contains("water")) || c.contains("nopass")) obj = cell.dataset.door ? "gate" : "wall";
         else if (c.contains("cannon")) obj = "cannon " + (cell.dataset.direction || "up");
 
         cell.innerHTML = (base ? `<i class="sp ${base}"></i>` : "") + (obj ? `<i class="sp ${obj}"></i>` : "");
@@ -279,7 +282,8 @@
             if (emit) emit("crash");
             return "hit";
         }
-        if (!next || next.classList.contains("box") || next.classList.contains("nopass") || next.classList.contains("wall")) {
+        const blocked = c => c.classList.contains("box") || c.classList.contains("nopass") || (c.classList.contains("wall") && !c.classList.contains("water"));
+        if (!next || blocked(next)) {
             // Cannon fire smashes walls, but a shut gate just eats the crate.
             // A monster loses a health instead.
             const monster = next && next.classList.contains("wall") && Object.keys(MONSTERS).find(k => next.classList.contains(k));

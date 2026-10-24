@@ -20,6 +20,7 @@ public class Solver {
     // health, and with none left all its squares vanish.
     static final String[] MONSTERS = {"kraken", "hull"};
     static int[] monsterAt; static long[][] monsterCells;
+    static long[] water;   // blocks like a wall, but shots fly over it
 
     static int healthLeft(long[] walls, int m) {
         int k = 0;
@@ -51,6 +52,7 @@ public class Solver {
         boolean anyMonster = all.contains("kraken") || all.contains("hull");
         WORDS = (N + (anyMonster ? 64 * MONSTERS.length : 0) + 63) / 64; STRIDE = 1 + 2 * WORDS;
         monsterAt = new int[N]; Arrays.fill(monsterAt, -1);
+        water = new long[WORDS];
         monsterCells = new long[MONSTERS.length][WORDS];
         int[] health = new int[MONSTERS.length];
         walls0 = new long[WORDS]; boxes0 = new long[WORDS]; exits = new long[WORDS];
@@ -74,6 +76,7 @@ public class Solver {
                 case "box": set(boxes0, i); break;
                 case "player": player0 = i; break;
                 case "exit": set(exits, i); break;
+                case "water": set(water, i); set(walls0, i); break;
                 case "kraken": case "hull": {
                     int m = k.equals("kraken") ? 0 : 1;
                     monsterAt[i] = m; set(monsterCells[m], i); set(walls0, i);
@@ -166,7 +169,7 @@ public class Solver {
             while (true) {
                 int n = cellAt(cur, dx, dy);
                 if (n == p) return false;   // the shot flattens the pirate
-                if (n < 0 || get(boxes, n) || get(walls, n)) {
+                if (n < 0 || get(boxes, n) || (get(walls, n) && !get(water, n))) {
                     if (n >= 0 && get(walls, n) && monsterAt[n] >= 0) hitMonster(walls, monsterAt[n]);
                     else if (n >= 0 && get(walls, n) && !get(gates, n)) clr(walls, n);
                     clr(boxes, cur);

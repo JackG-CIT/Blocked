@@ -221,6 +221,20 @@ def make_hull():
     return g
 
 
+def make_water():
+    """Open water between ships: darker than the page's sea, with little wave crests.
+    Blocks the pirate and crates, but cannon shots fly over it."""
+    g = blank(16, 16, "w")
+    for x, y, length in [(2, 2, 4), (10, 5, 4), (4, 9, 5), (12, 12, 3)]:
+        for i in range(length):
+            g[y][(x + i) % 16] = "v"
+        g[y - 1][(x + 1) % 16] = "u"
+        g[y - 1][(x + 2) % 16] = "f"
+    for x, y in [(8, 0), (1, 6), (14, 9), (7, 14)]:
+        g[y][x] = "v"
+    return g
+
+
 def make_gate(is_open):
     """A gate is a wall a plate can lower. Shut, it's stone like any wall (so
     it clearly stops cannon fire) with a brass frame and the plate's X mark.
@@ -624,6 +638,7 @@ def main():
         "kraken": make_kraken(),
         "kraken-eye": make_kraken(eye=True),
         "hull": make_hull(),
+        "water": make_water(),
     }
     big = {"logo": make_logo(), "ship": make_ship()}
     for name, g in {**tiles, **big}.items():
